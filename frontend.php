@@ -245,9 +245,11 @@ function post_notification_page_content(){
 				
 				$mailmsg = str_replace('@@addr',$addr,$mailmsg);
 				$mailmsg = str_replace('@@conf_url',$conf_url,$mailmsg);
-
-				wp_mail($addr, "$blogname - " . get_option('post_notification_page_name'), $mailmsg, post_notification_header());
 				
+				//$$ak: don't send when user has an account
+				if(!email_exists($addr)) {				
+					wp_mail($addr, "$blogname - " . get_option('post_notification_page_name'), $mailmsg, post_notification_header());
+				}
 				//Output Page
 				$content['header'] = $post_notification_strings['registration_successful'];
 				$msg = post_notification_ldfile('reg_success.tmpl');
