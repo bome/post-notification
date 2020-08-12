@@ -88,6 +88,15 @@ function post_notification_page_content(){
 
 	$msg = &$content['body'];
 	
+	//$$fb: some bot kept on trying to sign up this guy!
+	$forbidden_emails = "jeatopenortief942@list.ru, another_address@example.com";
+	if ($addr != '' && strlen($addr) > 0 && strpos($forbidden_emails, $addr) !== FALSE) {
+		$content['header'] = "ERROR";
+		$msg = "ERROR";
+		return $content;
+	}						
+
+	
 	// ******************************************************** //
 	//                  DEFINE OTHER VARS NEEDED
 	// ******************************************************** //
@@ -245,9 +254,9 @@ function post_notification_page_content(){
 				
 				$mailmsg = str_replace('@@addr',$addr,$mailmsg);
 				$mailmsg = str_replace('@@conf_url',$conf_url,$mailmsg);
-				
+
 				//$$ak: don't send when user has an account
-				if(!email_exists($addr)) {				
+				if(!email_exists($addr)) {
 					wp_mail($addr, "$blogname - " . get_option('post_notification_page_name'), $mailmsg, post_notification_header());
 				}
 				//Output Page

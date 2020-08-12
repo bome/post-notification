@@ -125,6 +125,4 @@ function post_notification_admin_page(){
 		echo  '</div>';
 }
 
-
 ?>
-

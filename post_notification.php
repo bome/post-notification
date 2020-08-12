@@ -25,7 +25,7 @@ Min WP Version: 2.1
  * This file has all the stuff that is really needed to initialize the plugin.
  */
 define("POST_NOTIFICATION_PLUGIN_DIR", dirname(plugin_basename(__FILE__)));
-define("POST_NOTIFICATION_PATH_REL", PLUGINDIR . '/' . POST_NOTIFICATION_PLUGIN_DIR);
+
 if ( defined("WP_PLUGIN_DIR") ) {
 	# Wordpress 2.6 and newer allows more flexible plugin location
 	//Todo: Check whether the _REL is really needed.
@@ -287,8 +287,9 @@ function post_notification_gui_init(){
 
 	if (function_exists('add_meta_box')) {
 	//This starts with WP 2.5
-		add_meta_box('post_notification', 'Post Notification', post_notification_form,'post', 'normal' );
-		add_meta_box('post_notification', 'Post Notification', post_notification_form,'page', 'normal' );
+	//$$fb 2020-07-21 the callback must be in quotes, too.
+		add_meta_box('post_notification', 'Post Notification', 'post_notification_form','post', 'normal' );
+		add_meta_box('post_notification', 'Post Notification', 'post_notification_form','page', 'normal' );
 		
 	} else {
 		// Notify box in advanced mode
@@ -410,9 +411,9 @@ function post_notification_widget_control() {
  
 // Register widget
 function post_notification_widget_registrieren() {
-	if(function_exists('register_sidebar_widget')){
-		register_sidebar_widget( 'Post Notification',  'post_notification_widget' );
-		register_widget_control( 'Post Notification', 'post_notification_widget_control');
+	if(function_exists('wp_register_sidebar_widget')){
+		wp_register_sidebar_widget( 'widget', 'Post Notification',  'post_notification_widget' );
+		wp_register_widget_control( 'widget', 'Post Notification', 'post_notification_widget_control');
 	}
 }
 
