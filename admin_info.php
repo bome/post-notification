@@ -15,7 +15,7 @@ function post_notification_admin_sub(){
 	$t_posts = $wpdb->prefix . 'post_notification_posts';
 	$t_cats = $wpdb->prefix . 'post_notification_cats';
 	$t_emails = $wpdb->prefix . 'post_notification_emails';
-	$datestr = get_settings('date_format') . ' ' . get_settings('time_format');
+	$datestr = get_option('date_format') . ' ' . get_option('time_format');
 	
 	//Run the install
 	

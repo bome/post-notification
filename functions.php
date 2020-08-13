@@ -85,7 +85,7 @@ function post_notification_ldfile($file){
 
 	if(function_exists('iconv') && function_exists('mb_detect_encoding')){
 		$temp = iconv(mb_detect_encoding($msg, "UTF-8, UTF-7, ISO-8859-1, ASCII, EUC-JP,SJIS, eucJP-win, SJIS-win, JIS, ISO-2022-JP"),
-			get_settings('blog_charset'), $msg); //"auto" doesn't work on quite a few platforms so we have to list encodings.
+			get_option('blog_charset'), $msg); //"auto" doesn't work on quite a few platforms so we have to list encodings.
 		if($temp != "") $msg = $temp;
 	}
 	$blogname = get_option('blogname');
@@ -167,14 +167,14 @@ function post_notification_header($html = false){
 	$header  = "MIME-Version: 1.0$hdr_nl";
 
 	if ($html){
-		$header .= 'Content-Type: text/html; charset="' . get_settings('blog_charset') . '"' . $hdr_nl;
+		$header .= 'Content-Type: text/html; charset="' . get_option('blog_charset') . '"' . $hdr_nl;
 	} else {
-		$header .= 'Content-Type: text/plain; charset="' . get_settings('blog_charset') . '"' . $hdr_nl;
+		$header .= 'Content-Type: text/plain; charset="' . get_option('blog_charset') . '"' . $hdr_nl;
 	}
 
 	$from_name = str_replace('@@blogname',get_option('blogname'),get_option('post_notification_from_name'));
 
-	$from_name = post_notification_encode($from_name, get_settings('blog_charset') );
+	$from_name = post_notification_encode($from_name, get_option('blog_charset') );
 
 	$from_email    = get_option('post_notification_from_email');
 

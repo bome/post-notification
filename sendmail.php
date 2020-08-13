@@ -112,28 +112,28 @@ function post_notification_create_email($id, $template = ''){
 	}
 
 	// Do some date stuff
-	$post_date = mysql2date(get_settings('date_format'), $post->post_date);
-	$post_time = mysql2date(get_settings('time_format'), $post->post_date);
+	$post_date = mysql2date(get_option('date_format'), $post->post_date);
+	$post_time = mysql2date(get_option('time_format'), $post->post_date);
 
 	if(!$html_email){
 		if(get_option('post_notification_debug') == 'yes') echo 'Date1: ' . htmlspecialchars($post_date) . '<br />';
 
 		if(function_exists('iconv') && (strpos(phpversion(), '4') == 0)){ //html_entity_decode does not support UTF-8 in php < 5
-			$post_time = (($temp = iconv(get_settings('blog_charset'), 'ISO8859-1', $post_time)) != "") ? $temp : $post_time;
-			$post_date = (($temp = iconv(get_settings('blog_charset'), 'ISO8859-1', $post_date)) != "") ? $temp : $post_date;
+			$post_time = (($temp = iconv(get_option('blog_charset'), 'ISO8859-1', $post_time)) != "") ? $temp : $post_time;
+			$post_date = (($temp = iconv(get_option('blog_charset'), 'ISO8859-1', $post_date)) != "") ? $temp : $post_date;
 
 
 		}
 		if(get_option('post_notification_debug') == 'yes') echo 'Date2: ' . htmlspecialchars($post_date) . '<br />';
 
 
-		$post_time = @html_entity_decode($post_time,ENT_QUOTES,get_settings('blog_charset'));
-		$post_date = @html_entity_decode($post_date,ENT_QUOTES,get_settings('blog_charset'));
+		$post_time = @html_entity_decode($post_time,ENT_QUOTES,get_option('blog_charset'));
+		$post_date = @html_entity_decode($post_date,ENT_QUOTES,get_option('blog_charset'));
 		if(get_option('post_notification_debug') == 'yes') echo 'Date3: ' . htmlspecialchars($post_date) . '<br />';
 
 		if(function_exists('iconv') && (strpos(phpversion(), '4') == 0)){ //html_entity_decode does not support UTF-8 in php < 5
-			$post_time =(($temp = iconv('ISO8859-1', get_settings('blog_charset'), $post_time)) != "")? $temp : $post_time;
-			$post_date =(($temp = iconv('ISO8859-1', get_settings('blog_charset'), $post_date)) != "")? $temp : $post_date;
+			$post_time =(($temp = iconv('ISO8859-1', get_option('blog_charset'), $post_time)) != "")? $temp : $post_time;
+			$post_date =(($temp = iconv('ISO8859-1', get_option('blog_charset'), $post_date)) != "")? $temp : $post_date;
 		}
 		if(get_option('post_notification_debug') == 'yes') echo 'Date4: ' . htmlspecialchars($post_date) . '<br />';
 	}
@@ -190,7 +190,7 @@ function post_notification_create_email($id, $template = ''){
 	} else {
 		$subject = str_replace('@@title', __('New post', 'post_notification'), $subject);
 	}
-	$subject = post_notification_encode($subject, get_settings('blog_charset') );
+	$subject = post_notification_encode($subject, get_option('blog_charset') );
 
 
 	$rv = array();

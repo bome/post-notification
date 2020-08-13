@@ -11,12 +11,12 @@ class Walker_pn_CategoryDropdown extends Walker {
 	var $tree_type = 'category';
 	var $db_fields = array ('parent' => 'category_parent', 'id' => 'cat_ID'); //TODO: decouple this
 
-	function start_el($output, $category, $depth, $args) {
+	function start_el(&$output, $object, $depth = 0, $args = Array(), $current_object_id = 0) {
 		$pad = str_repeat('&nbsp;', $depth * 3);
 
-		$cat_name = apply_filters('list_cats', $category->cat_name, $category);
-		$output .= "\t<option value=\"".$category->cat_ID."\"";
-		if ( in_array($category->cat_ID, $args['sel_cat']))
+		$cat_name = apply_filters('list_cats', $object->cat_name, $object);
+		$output .= "\t<option value=\"".$object->cat_ID."\"";
+		if ( in_array($object->cat_ID, $args['sel_cat']))
 			$output .= ' selected="selected"';
 		$output .= '>';
 		$output .= $pad.$cat_name;
@@ -192,7 +192,7 @@ function post_notification_admin_sub(){
 			$email_addr = $email->email_addr;
 			$gets_mail = $email->gets_mail;
 			$last_modified = $email->last_modified;
-			$datestr = get_settings('date_format') . ' ' . get_settings('time_format');
+			$datestr = get_option('date_format') . ' ' . get_option('time_format');
 			$date_subscribed = post_notification_date_i18n_tz($datestr, post_notification_mysql2gmdate($email->date_subscribed));
 			$id = $email->id;
 			$ip = long2ip($email->subscribe_ip);
