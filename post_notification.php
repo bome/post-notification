@@ -2,13 +2,13 @@
 
 /*
 Plugin Name: Post Notification
-Plugin URI: http://pn.xn--strbe-mva.de/
+Plugin URI: https://github.com/bome/post-notification
 Description: Sends an email to all subscribers. See Readme2.txt or instructions for details.
-Author: Moritz Str&uuml;be
-Version: 1.2.40
+Author: bome, (based on Moritz Strübe)
+Version: 1.2.50
 License: GPL v2
-Author URI: http://xn--strbe-mva.de
-Min WP Version: 2.1
+Author URI: http://bome.com
+Min WP Version: 5
 
 */
 
