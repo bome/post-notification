@@ -1,4 +1,4 @@
-A new Post "@@title" was written on the @@date at @@time on "@@blogname".
+A new @@blogname post "@@title" was published on @@date at @@time.
 
 @@content 
 
@@ -6,7 +6,7 @@ A new Post "@@title" was written on the @@date at @@time on "@@blogname".
 
 ________________________________________________________
 
-You have subscribed to these e-mail notices about new posts to the blog.
-If you want to change your settings or unsubscribe, please visit:
+You have subscribed to these email notifications.
+If you want to change the subscribed categories, or to unsubscribe entirely, please visit:
 
 @@conf_url
