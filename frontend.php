@@ -140,7 +140,7 @@ function post_notification_page_content(){
  			    	$wpdb->query("INSERT INTO $t_cats (id, cat_id) VALUES" . substr($queryCats, 1));
  			}
  			if(isset($post_notification_strings['welcome'])){
- 				$msg =  '<h3>' . str_replace('@@blogname' , get_option(blogname), $post_notification_strings['welcome']).  '</h3>';
+ 				$msg =  '<h3>' . str_replace('@@blogname' , get_option('blogname'), $post_notification_strings['welcome']).  '</h3>';
  			}  else {
  				$msg =  '<h3>' . $post_notification_strings['saved'] .  '</h3>';
  			} 
@@ -257,6 +257,8 @@ function post_notification_page_content(){
 
 				//$$ak: don't send when user has an account
 				if(!email_exists($addr)) {
+					//$$fb: log registrations
+					error_log("Post Notification: subscribe -- sending authentication email to: $addr");
 					wp_mail($addr, "$blogname - " . get_option('post_notification_page_name'), $mailmsg, post_notification_header());
 				}
 				//Output Page
@@ -274,7 +276,6 @@ function post_notification_page_content(){
 					$conf_url .= "action=unsubscribe";
 					
 					$mailmsg = post_notification_ldfile('unsubscribe.tmpl');
-					
 					$mailmsg = str_replace(array('@@addr','@@conf_url'), array($addr, $conf_url), $mailmsg);
 					wp_mail($addr, "$blogname - " . $post_notification_strings['deaktivated'], $mailmsg, post_notification_header());
 				}
@@ -289,7 +290,7 @@ function post_notification_page_content(){
 		if($addr != ''){
 			if(!is_email($addr))
 				$msg .= '<p class="error">' . $post_notification_strings['check_email'] . '</p>';
-			if(!post_notification_check_captcha() && action != '')
+			if(!post_notification_check_captcha() && $action != '')
 				$msg .= '<p class="error">' . $post_notification_strings['wrong_captcha'] . '</p>';
 		} 
 		
