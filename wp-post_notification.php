@@ -2,7 +2,7 @@
 #------------------------------------------------------
 # INFO
 #------------------------------------------------------
-# This is part of the Post Notification Plugin for 
+# This is part of the Post Notification Plugin for
 # Wordpress. Please see the post_notification.php for
 # details.
 #------------------------------------------------------
@@ -28,9 +28,6 @@ post_notification_fe(); //run FE
 
 echo '</div></div>';
 //include Sidebar
-get_sidebar(); 
+get_sidebar();
 //Include the WP footer
 get_footer();
-
-
-?>

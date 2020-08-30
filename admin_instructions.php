@@ -1,15 +1,16 @@
-<?php 
+<?php
 
 #------------------------------------------------------
 # INFO
 #------------------------------------------------------
-# This is part of the Post Notification Plugin for 
+# This is part of the Post Notification Plugin for
 # Wordpress. Please see the readme.txt for details.
 #------------------------------------------------------
 
 
-function post_notification_admin_sub(){
-?>
+function post_notification_admin_sub()
+{
+    ?>
 <h3><?php _e('Instructions', 'post_notification'); ?></h3>
 <ol>
 	<li>
@@ -29,18 +30,18 @@ function post_notification_admin_sub(){
 		<p><?php _e('There are several ways of integration:', 'post_notification'); ?>
 		<ul>
 			<li><?php 	echo str_replace('@@repl', __('Replacement in Posts', 'post_notification'), __('The strings @@post_notification_header and @@post_notification_body will be replaced in your post in case the "@@repl" option ist turned on in the settings.', 'post_notification')) . ' ';
-						echo __('Therefore a new page with @@post_notification_header in the title and @@post_notification_body in the Post itself must be created.', 'post_notification') . ' '; 
-						echo __('This is done automaticly by the "Add Post Notification page" option. If you do not do that you have to add the post-id/page-id in the "Link to the Post Notification page" setting by hand.', 'post_notification'); ?>
+    echo __('Therefore a new page with @@post_notification_header in the title and @@post_notification_body in the Post itself must be created.', 'post_notification') . ' ';
+    echo __('This is done automaticly by the "Add Post Notification page" option. If you do not do that you have to add the post-id/page-id in the "Link to the Post Notification page" setting by hand.', 'post_notification'); ?>
 			</li>
-			<li><?php	echo __('Use the Post Notification template. The Template is automaticly copied to your theme. This method might have some trouble with badly written themes. But has a little better performance.', 'post_notification'). ' '; 
-						echo __('If you do not use the "Add Post Notification page" option you have to add the post-id in the "Link to the Post Notification page" setting by hand.', 'post_notification'); ?>
+			<li><?php	echo __('Use the Post Notification template. The Template is automaticly copied to your theme. This method might have some trouble with badly written themes. But has a little better performance.', 'post_notification'). ' ';
+    echo __('If you do not use the "Add Post Notification page" option you have to add the post-id in the "Link to the Post Notification page" setting by hand.', 'post_notification'); ?>
 			</li>
 
 			<li><?php 	echo __('Copy the wp-post_notification.php to your WP-root. Copy&Paste the url to the "Link to the Post Notification page" setting', 'post_notification'); ?>
 			</li>
 			
 			<li><?php 	echo __('You can copy the content of the subscribe_snippet.php into your theme.', 'post_notification') . ' ';
-						echo __('You still need a special Post Notification Page. ', 'post_notification'); ?> 
+    echo __('You still need a special Post Notification Page. ', 'post_notification'); ?> 
 			</li>
 			<li><?php 	echo __('Coders might want to look at the frontend.php.', 'post_notification'); ?> 
 			</li>
