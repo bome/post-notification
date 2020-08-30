@@ -36,22 +36,23 @@ function post_notification_admin_sub()
     $t_emails = $wpdb->prefix . 'post_notification_emails';
     $t_cats = $wpdb->prefix . 'post_notification_cats';
     
-    
-    if ($_GET['action'] == 'remove_email') {
-        $remove=true;
+    $action = filter_input(INPUT_GET, 'action', FILTER_SANITIZE_SPECIAL_CHARS);
+        if ($action == 'remove_email') {
+            $remove=true;
     } else {
         $remove = false;
     }
     
     echo '<h3>' . __('List of addresses:', 'post_notification') . '</h3>';
     
-    if (isset($_POST['removeEmailChecked'])) {
-        if ($_POST['removeEmail'] == "") {
+    $removeEmailChecked = filter_input(INPUT_POST, 'removeEmailChecked', FILTER_SANITIZE_SPECIAL_CHARS);
+    if ($removeEmailChecked !== null) {
+        if ($removeEmailChecked === null) {
             echo '<div class = "error">' . __('No address checked!', 'post_notification') . '</div>';
         } else {
             echo __('The following addresses were deleted:', 'post_notification') . '<br /><br />';
-            
-            foreach ($_POST['removeEmail'] as $removeAddress) {
+             $removeEmail = filter_input(INPUT_POST, 'removeEmail', FILTER_SANITIZE_SPECIAL_CHARS);
+            foreach ($removeEmail as $removeAddress) {
                 //Multiple table delete only works with mysql 4.0 or 4.1
                 $wpdb->query("DELETE $t_cats, $t_emails 
 					FROM $t_emails LEFT JOIN $t_cats USING (id) 
@@ -60,14 +61,15 @@ function post_notification_admin_sub()
             }
         }
     } else {
-        if (isset($_POST['email'])) {
-            $email = $_POST['email'];
+        $Email = filter_input(INPUT_POST, 'email', FILTER_SANITIZE_SPECIAL_CHARS);
+        if ($Email !== null AND strlen($Email) > 7) {
+            $email = $Email;
         } else {
             $email = '*';
         }
-        
-        if (isset($_POST['cats'])) {
-            $sel_cats = $_POST['cats'];
+        $categories = filter_input(INPUT_POST, 'cats', FILTER_DEFAULT, FILTER_REQUIRE_ARRAY);
+        if ($categories !== null) {
+            $sel_cats = $categories;
         } else {
             $sel_cats = '';
         }
@@ -75,11 +77,9 @@ function post_notification_admin_sub()
         if (!is_array($sel_cats)) {
             $sel_cats = array();
         }
-        
-        
-        if (isset($_POST['limit'])) {
-            $limit= $_POST['limit'];
-        } else {
+         
+        $limit = filter_input(INPUT_POST, 'limit', FILTER_SANITIZE_SPECIAL_CHARS);
+        if ($limit === null) {
             $limit = 50;
         }
             
@@ -90,8 +90,9 @@ function post_notification_admin_sub()
             $limit= 1;
         }
         
-        if (isset($_POST['start'])) {
-            $start = $_POST['start'];
+        $start = filter_input(INPUT_POST, 'start', FILTER_SANITIZE_SPECIAL_CHARS);
+        if ($start !== false OR $start !== null) {
+            //$start = $_POST['start'];
         } else {
             $start = '';
         }
@@ -99,37 +100,42 @@ function post_notification_admin_sub()
         if (!is_numeric($start)) {
             $start = 0;
         }
-        if (isset($_POST['next'])) {
+        $next = filter_input(INPUT_POST, 'next', FILTER_SANITIZE_SPECIAL_CHARS);
+        if ($next !== null) {
             $start += $limit;
         }
-        if (isset($_POST['perv'])) {
+        $perv = filter_input(INPUT_POST, 'perv', FILTER_SANITIZE_SPECIAL_CHARS);
+        if ($perv !== null) {
             $start -= $limit;
         }
         if ($start < 0) {
             $start = 0;
         }
-        
-        if (isset($_POST['sortby'])) {
-            $sortby = $_POST['sortby'];
-        } else {
+        $sortby = filter_input(INPUT_POST, 'sortby', FILTER_SANITIZE_SPECIAL_CHARS);
+        if ($sortby === null or $sortby === false) {
             $sortby = 'id';
         }
-        
-        if (isset($_POST['sortorder'])) {
-            $sortorder = $_POST['sortorder'];
-        } else {
+        $sortorder = filter_input(INPUT_POST, 'sortorder', FILTER_SANITIZE_SPECIAL_CHARS);
+        if ($sortorder === null or $sortorder === false) {
             $sortorder = 'ASC';
         }
         
         $sortsrt = " $sortby $sortorder ";
         
+        $show_idp = filter_input(INPUT_POST, 'show_id', FILTER_SANITIZE_SPECIAL_CHARS);
+        if ($show_idp !== null) {
+            $show_id = true;
+        }
+        $show_listp = filter_input(INPUT_POST, 'show_list', FILTER_SANITIZE_SPECIAL_CHARS);
+        if ($show_listp !== null) {
+            $show_list = true;
+        }
+        $show_unconfp = filter_input(INPUT_POST, 'show_unconf', FILTER_SANITIZE_SPECIAL_CHARS);
+        if ($show_unconfp !== null) {
+            $show_unconf = true;
+        }
         
-        $show_id = isset($_POST['show_id']);
-        $show_list = isset($_POST['show_list']);
-        $show_unconf = isset($_POST['show_unconf']);
-        
-        
-        echo '<form method="post" action="admin.php?page=post_notification/admin.php&action=' . $_GET['action'] . '"> ';
+        echo '<form method="post" action="admin.php?page=post_notification/admin.php&action=' . $action . '"> ';
         echo __('Email:', 'post_notification') . ' <input name="email" type="text" size="30" value="' . $email . '"> ';
         echo __('Cats:', 'post_notification') . ' <select name="cats[]" multiple="multiple"  style="height:auto"> ';
         $cats = get_categories();

@@ -78,7 +78,6 @@ function post_notification_admin_sub()
         echo '<div class="error">' . __('The maximum executiontime is very low.', 'post_notification') . ' '
             . '<a href="http://php.net/manual/ref.info.php#ini.max-execution-time">' . __('More information.', 'post_notification')
             . '</a></div>';
-        ;
     }
     
     if ((get_option('db_version') > 4772)  && (get_option('db_version') < 6124) && (substr(get_option('post_notification_template'), -5) == '.html')) {

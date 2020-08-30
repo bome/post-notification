@@ -61,11 +61,10 @@ function post_notification_admin_page()
     //********************************************************//
     //                  GET VARIABLES FROM URL
     //********************************************************//
-        if (isset($_GET['action'])) {
-            $action=$_GET['action'];
-        } else {
-            $action = '';
-        }
+        $action = filter_input(INPUT_GET, 'action', FILTER_SANITIZE_SPECIAL_CHARS);
+        if ($action === NULL OR $action === FALSE) {
+            $action="";
+        } 
         
         
     //***************************************************//
