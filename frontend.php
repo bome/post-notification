@@ -263,14 +263,30 @@ function post_notification_page_content()
             // ******************************************************** //
             if ($action == "subscribe" || $action == '') {
                 $conf_url = post_notification_get_mailurl($addr);
-                        
-                // Build  mail
+                
+                // added filter to turn mails to wp-users off
+                // todo: Language support missing for filter
+                // 'send' => true if no filter is used
+                $sendmailtowpusers = array(
+                    'send' => true,
+                    'header'=> 'User exists in Database',
+                    'msg' => 'No mail sent.',
+                );
+                $sendmailtowpusers = apply_filters( 'pn_sendmailtowpusers', $sendmailtowpusers, $addr );
+                
+                if (email_exists($addr) AND $sendmailtowpusers['send'] === false) {
+                    error_log("Post Notification: No Mail sent to: " . $addr);
+                    //Output Page
+                    $content['header'] = $sendmailtowpusers['header'];
+                    $msg = $sendmailtowpusers['msg'];
+                return $content; //here it ends - We don't want to show the selection screen.
+               }
+                // Build  mail 
                 $mailmsg = post_notification_ldfile('confirm.tmpl');
                 
                 $mailmsg = str_replace('@@addr', $addr, $mailmsg);
                 $mailmsg = str_replace('@@conf_url', $conf_url, $mailmsg);
-
-                //$$fb: log registrations
+                
                 error_log("Post Notification: subscribe -- sending authentication email to: $addr");
                 wp_mail($addr, "$blogname - " . get_option('post_notification_page_name'), $mailmsg, post_notification_header());
                 
@@ -278,6 +294,9 @@ function post_notification_page_content()
                 $content['header'] = $post_notification_strings['registration_successful'];
                 $msg = post_notification_ldfile('reg_success.tmpl');
                 return $content; //here it ends - We don't want to show the selection screen.
+                // }
+                
+                
             }
             // ******************************************************** //
             //                    UNSUBSCRIBE
