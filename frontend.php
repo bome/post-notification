@@ -45,15 +45,17 @@ function post_notification_check_captcha()
     if (get_option('post_notification_captcha') == 0) {
         return true;
     }
-    if ($_POST['captchacode'] == '') {
+    $captchacode = filter_input(INPUT_POST, 'captchacode', FILTER_SANITIZE_SPECIAL_CHARS);
+    if ($captchacode == '' OR $captchacode === null OR $captchacode === false ) {
         return false;
     }
-    if ($_POST['captcha'] == '') {
+    $captcha = filter_input(INPUT_POST, 'captcha', FILTER_SANITIZE_SPECIAL_CHARS);
+    if ($captcha == '' OR $captcha === null OR $captcha === false ) {
         return false;
     }
     require_once(POST_NOTIFICATION_PATH . 'class.captcha.php');
-    $my_captcha = new captcha($_POST['captchacode'], POST_NOTIFICATION_PATH . '_temp');
-    return $my_captcha->verify($_POST['captcha']);
+    $my_captcha = new captcha($captchacode, POST_NOTIFICATION_PATH . '_temp');
+    return $my_captcha->verify($captcha);
 }
 
 
@@ -83,18 +85,16 @@ function post_notification_page_content()
     // ******************************************************** //
     //                  GET VARIABLES FROM URL
     // ******************************************************** //
-    
-    
-    $action = $_GET['action'];
-    $addr   = $wpdb->escape($_GET['addr']);
-    $code   = $wpdb->escape($_GET['code']);
+    $action = filter_input(INPUT_GET, 'action', FILTER_SANITIZE_SPECIAL_CHARS);
+    $addr = filter_input(INPUT_GET, 'addr', FILTER_SANITIZE_SPECIAL_CHARS);
+    $code = filter_input(INPUT_GET, 'code', FILTER_SANITIZE_SPECIAL_CHARS);
 
-    
-    if ($_POST['addr'] != '') {
-        $action = $_POST['action'];
-        $addr = $wpdb->escape($_POST['addr']);
-        $code = $wpdb->escape($_POST['code']);
-        $pn_cats = $_POST['pn_cats']; //Security is handled in the function.
+    $postaddr = filter_input(INPUT_POST, 'addr', FILTER_SANITIZE_SPECIAL_CHARS);
+    if ($postaddr !== '' OR $postaddr !== null OR $postaddr !== false) {
+        $action = filter_input(INPUT_POST, 'action', FILTER_SANITIZE_SPECIAL_CHARS);
+        $addr = $postaddr;
+        $code = filter_input(INPUT_POST, 'code', FILTER_SANITIZE_SPECIAL_CHARS);
+        $pn_cats = filter_input(INPUT_POST, 'pn_cats', FILTER_DEFAULT, FILTER_REQUIRE_ARRAY);
     }
 
     $msg = &$content['body'];
@@ -270,12 +270,10 @@ function post_notification_page_content()
                 $mailmsg = str_replace('@@addr', $addr, $mailmsg);
                 $mailmsg = str_replace('@@conf_url', $conf_url, $mailmsg);
 
-                //$$ak: don't send when user has an account
-                if (!email_exists($addr)) {
-                    //$$fb: log registrations
-                    error_log("Post Notification: subscribe -- sending authentication email to: $addr");
-                    wp_mail($addr, "$blogname - " . get_option('post_notification_page_name'), $mailmsg, post_notification_header());
-                }
+                //$$fb: log registrations
+                error_log("Post Notification: subscribe -- sending authentication email to: $addr");
+                wp_mail($addr, "$blogname - " . get_option('post_notification_page_name'), $mailmsg, post_notification_header());
+                
                 //Output Page
                 $content['header'] = $post_notification_strings['registration_successful'];
                 $msg = post_notification_ldfile('reg_success.tmpl');
