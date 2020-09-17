@@ -99,9 +99,11 @@ function post_notification_page_content()
 
     $msg = &$content['body'];
     
-    //$$fb: some bot kept on trying to sign up this guy!
-    $forbidden_emails = "jeatopenortief942@list.ru, another_address@example.com";
-    if ($addr != '' && strlen($addr) > 0 && strpos($forbidden_emails, $addr) !== false) {
+    // filter for personal blacklisting in functions.php
+    $excluded_email_addresses = "";
+    $excluded_email_addresses = apply_filters( 'post_notification_excluded_email_addresses', $excluded_email_addresses);
+    
+    if ($addr != '' && strlen($addr) > 0 && strpos($excluded_email_addresses, $addr) !== false) {
         $content['header'] = "ERROR";
         $msg = "ERROR";
         return $content;
