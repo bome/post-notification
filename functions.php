@@ -8,7 +8,17 @@
 ------------------------------------------------------
 
 */
+// 2020 September: use shortcodes:
+add_shortcode( 'post_notification_header', 'post_notification_header_shortcode_function' );
+add_shortcode( 'post_notification_body', 'post_notification_body_shortcode_function' );
 
+function post_notification_header_shortcode_function() {
+    echo post_notification_feheader();
+}
+
+function post_notification_body_shortcode_function() {
+    echo post_notification_febody();
+}
 
 function post_notification_get_profile_dir($profile = '')
 {

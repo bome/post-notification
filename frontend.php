@@ -359,14 +359,15 @@ function post_notification_page_content()
     return $content;
 }
 
-
-function post_notification_filter_content($content)
-{
-    if (strpos($content, '@@post_notification_')!== false) { //Just looking for the start
-        $fe = post_notification_page_content();
-        $content = str_replace('@@post_notification_header', $fe['header'], $content);
-        $content = str_replace('@@post_notification_body', $fe['body'], $content);
-    }
-    
-    return $content;
-}
+// depraced, use shortcodes -> deactivate (& post notification 385 ff.)
+// shortcodes found in functions.php
+//function post_notification_filter_content($content)
+//{
+//    if (strpos($content, '@@post_notification_')!== false) { //Just looking for the start
+//        $fe = post_notification_page_content();
+//        $content = str_replace('@@post_notification_header', $fe['header'], $content);
+//        $content = str_replace('@@post_notification_body', $fe['body'], $content);
+//    }
+//    
+//    return $content;
+//}

@@ -381,12 +381,13 @@ add_action('switch_theme', 'post_notification_installtheme');
 
 
 // Replacement of Post-Strings.
-if (get_option('post_notification_filter_include') != 'no') {
-    require_once(POST_NOTIFICATION_PATH . 'frontend.php');
-    add_filter('the_content', 'post_notification_filter_content');
-    add_filter('the_title', 'post_notification_filter_content');
-    add_filter('single_post_title', 'post_notification_filter_content');
-}
+// depraced, use shortcodes
+//if (get_option('post_notification_filter_include') != 'no') {
+//    require_once(POST_NOTIFICATION_PATH . 'frontend.php');
+//    add_filter('the_content', 'post_notification_filter_content');
+//    add_filter('the_title', 'post_notification_filter_content');
+//    add_filter('single_post_title', 'post_notification_filter_content');
+//}
 
 //Widget by  Philipp - at least the first version :-)
 
