@@ -39,6 +39,16 @@ function post_notification_fe($class = 'entry')
     echo '<h2>' . $content['header']  . '</h2><div class="' . $class . '">' . $content['body']  . '</div>';
 }
 
+// $$ak: added Sep 2020
+function post_notification_check_honeypot() {
+    $honeypot = filter_input(INPUT_POST, 'verifyemail', FILTER_SANITIZE_SPECIAL_CHARS);
+    if (strlen($honeypot) > 0) {
+        error_log("hmm --- honeypot");
+        return false;
+    } else {
+        return true;
+    }
+}
 
 function post_notification_check_captcha()
 {
@@ -259,7 +269,7 @@ function post_notification_page_content()
         //                   WITHOUT AUTH
         // ******************************************************** //
         $code = '';
-        if (is_email($addr) && post_notification_check_captcha()) {
+        if (is_email($addr) && post_notification_check_captcha() && post_notification_check_honeypot()) {
             // ******************************************************** //
             //                      SUBSCRIBE
             // ******************************************************** //
@@ -340,10 +350,20 @@ function post_notification_page_content()
         
     
         $msg .= post_notification_ldfile('subscribe.tmpl');
+               
         $msg = str_replace('@@action', post_notification_get_link($addr), $msg);
         $msg = str_replace('@@addr', $addr, $msg);
         $msg = str_replace('@@cats', '', $msg);
         $msg = str_replace('@@vars', $vars, $msg);
+        
+              
+        // todo: better define the option ;-)
+        update_option('post_notification_honeypot', true);
+        if (get_option('post_notification_honeypot') !== 0) {
+            $pattern ='</form>';
+            $replacement ='p id="verifyemail">Please DONT write anything here: <input type="text" name="verifyemail" size="30" maxlength="50"></form';
+            $msg = preg_replace($pattern, $replacement, $msg); //remove honeypot
+        }
         
         //Do Captcha-Stuff
         if (get_option('post_notification_captcha') == 0) {
