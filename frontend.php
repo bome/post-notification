@@ -356,15 +356,22 @@ function post_notification_page_content()
         $msg = str_replace('@@cats', '', $msg);
         $msg = str_replace('@@vars', $vars, $msg);
         
-              
-        // todo: better define the option ;-)
-        update_option('post_notification_honeypot', true);
-        if (get_option('post_notification_honeypot') !== 0) {
-            $pattern ='</form>';
-            $replacement ='p id="verifyemail">Please DONT write anything here: <input type="text" name="verifyemail" size="30" maxlength="50"></form';
+        if (get_option('post_notification_honeypot') == 'yes') {
+            error_log("honeypot_active");
+            echo "<style>
+                #verifyemail{
+                    opacity: 0;
+                    position: absolute;
+                    height: 0;
+                    width: 0;
+                    z-index: -1;
+                    }
+                </style>";
+            $pattern = '</form>';
+            $replacement = 'p id="verifyemail">Please DONT write anything here: <input autocomplete="off" type="text" name="email" size="30" maxlength="50" placeholder="Your e-mail here"></form';
             $msg = preg_replace($pattern, $replacement, $msg); //remove honeypot
         }
-        
+
         //Do Captcha-Stuff
         if (get_option('post_notification_captcha') == 0) {
             $msg = preg_replace('/<!--capt-->(.*?)<!--cha-->/is', '', $msg); //remove captcha

@@ -112,6 +112,7 @@ function post_notification_admin_sub()
         update_option('post_notification_sendcheck', $_POST['sendcheck']);
         update_option('post_notification_saved_tmpl', $_POST['saved_tmpl']);
         update_option('post_notification_auto_subscribe', $_POST['auto_subscribe']);
+        update_option('post_notification_honeypot', $_POST['honeypot']);
 
         $p_captcha = $_POST['captcha'];
         if (is_numeric($p_captcha)) {
@@ -682,25 +683,13 @@ function post_notification_admin_sub()
             </select>
         </td>
     </tr>
-
-
-
+    
 
 </table>
 
 
-
-
-
-
-
-
-
 	<h4> <?php  _e('Frontend', 'post_notification'); ?></h4>
 <table width="100%">
-
-
-
 
 	<tr class="alternate">
 		<th style="text-align:right;padding-right:10px;"><?php _e('Name of the Post Notification page:', 'post_notification'); ?></th>
@@ -756,16 +745,33 @@ function post_notification_admin_sub()
 			<?php _e('Your template must support Captchas.', 'post_notification'); ?>
 		</td>
 	</tr>
+        <?php
+            // added setting for honeypot
 
+            if (get_option('post_notification_honeypot') == 'yes') { //rather have No
+                $honeypotY = $selected;
+            } else {
+                $honeypotN = $selected;
+            }
+            ?>
+            <tr class="alternate">
+                <th style="text-align:right;padding-right:10px;"><?php echo "Use Honeypot (hidden field in subscribtion form?"; ?></th>
+                <td>
+                    <select name="honeypot" >
+                        <option value="no"  <?php echo $honeypotN; ?> > <?php echo "No"; ?></option>
+                        <option value="yes" <?php echo $honeypotY; ?> > <?php echo "Yes"; ?></option>
+                    </select>
+                </td>
+            </tr>
 
-	<tr class="alternate">
-		<th style="text-align:right;padding-right:10px;"><?php _e('Post Notification link in the meta-section:', 'post_notification'); ?></th>
-		<td>
-	        <select name="page_meta" >
-	         	<option value="no"  <?php  echo $metaN; ?>><?php  _e('No', 'post_notification'); ?></option>
-				<option value="yes" <?php  echo $metaY; ?>><?php  _e('Yes', 'post_notification'); ?></option>
-	        </select>
-		</td>
+            <tr class="alternate">
+                <th style="text-align:right;padding-right:10px;"><?php _e('Post Notification link in the meta-section:', 'post_notification'); ?></th>
+                <td>
+                    <select name="page_meta" >
+                        <option value="no"  <?php echo $metaN; ?>><?php _e('No', 'post_notification'); ?></option>
+                        <option value="yes" <?php echo $metaY; ?>><?php _e('Yes', 'post_notification'); ?></option>
+                    </select>
+                </td>
 	</tr>
 
 
