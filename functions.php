@@ -197,32 +197,30 @@ function post_notification_encode($in_str, $charset)
     return $out_str;
 }
 
-/// Generate the Mail header
-function post_notification_header($html = false)
+// Generate the Mail header
+// Ak: add unsubscribe options before sending (sendmail.php)
+function post_notification_header($html = true)
 {
-    if (get_option('post_notification_hdr_nl') == 'rn') {
-        $hdr_nl = "\r\n";
-    } else {
-        $hdr_nl = "\n";
-    }
-
-    $header  = "MIME-Version: 1.0$hdr_nl";
-
-    if ($html) {
-        $header .= 'Content-Type: text/html; charset="' . get_option('blog_charset') . '"' . $hdr_nl;
-    } else {
-        $header .= 'Content-Type: text/plain; charset="' . get_option('blog_charset') . '"' . $hdr_nl;
-    }
-
     $from_name = str_replace('@@blogname', get_option('blogname'), get_option('post_notification_from_name'));
 
     $from_name = post_notification_encode($from_name, get_option('blog_charset'));
 
     $from_email    = get_option('post_notification_from_email');
+    
+        
+    $header = Array();
+ 
+    $header['MIME-Version'] = "MIME-Version: 1.0";
+    $header['From'] = "From: ".$from_name." <".$from_email.">";
+    $header['Reply-To'] = "Reply-To: ".$from_email;
+    $header['Return-Path'] = "Return-Path: ".$from_email;
 
-    $header .= "From: \"$from_name\" <$from_email>$hdr_nl";
-    $header .= "Reply-To: $from_email$hdr_nl";
-    $header .= "Return-Path: $from_email$hdr_nl";
+    if ($html) {
+       $header['Content-type'] = "Content-type: text/html; charset=" . get_option('blog_charset');
+    } else {
+       $header['Content-type'] = "Content-type: text/plain; charset=" . get_option('blog_charset');
+    }
+    
     return $header;
 }
 
@@ -270,36 +268,10 @@ function post_notification_set_next_send()
  * @return the Adress.
  */
 
-function post_notification_get_mailurl($addr, $code = '')
-{
-    global $wpdb;
-    if (strlen($code) != 32) {
-        $t_emails = $wpdb->prefix . 'post_notification_emails';
-        $query = $wpdb->get_results("SELECT id, act_code FROM $t_emails WHERE email_addr = '" . $wpdb->escape($addr) . "'");
-        $query = $query[0];
-
-        //Get Activation Code
-        if (($query->id == '') || (strlen($query->act_code) != 32)) { //Reuse the code
-            mt_srand((double) microtime() * 1000000);
-            $code = md5(mt_rand(100000, 99999999) . time());
-            if ($query->id == '') {
-                $ip = sprintf('%u', ip2long($_SERVER['REMOTE_ADDR']));
-                if ($ip < 0 || $ip===false) {
-                    $ip = 0;
-                } //This has changed with php 5
-                $wpdb->query(
-                    "INSERT INTO $t_emails (email_addr,date_subscribed, act_code, subscribe_ip) ".
-                    "VALUES ('" . $wpdb->escape($addr) . "','" . post_notification_date2mysql() ."', '$code', $ip  )"
-                );
-            } else {
-                $wpdb->query(
-                    "UPDATE $t_emails SET act_code = '$code' WHERE email_addr = '" . $wpdb->escape($addr) . "'"
-                );
-            }
-        } else {
-            $code = $query->act_code;
-        }
-    }
+function post_notification_get_mailurl($addr, $code = '') {
+    
+   $code = post_notification_get_code($addr, $code);
+   
     //Adjust the URL
     $confurl = post_notification_get_link();
     if (strpos($confurl, '/?') || strpos($confurl, 'index.php?')) {
@@ -449,4 +421,36 @@ function post_notification_date_i18n_tz($dateformatstring, $unixtimestamp)
     }
     $j = @gmdate($dateformatstring, $i);
     return $j;
+}
+
+function post_notification_get_code($addr, $code = '') {
+    global $wpdb;
+    if (strlen($code) != 32) {
+        $t_emails = $wpdb->prefix . 'post_notification_emails';
+        $query = $wpdb->get_results("SELECT id, act_code FROM $t_emails WHERE email_addr = '" . $wpdb->escape($addr) . "'");
+        $query = $query[0];
+
+        //Get Activation Code
+        if (($query->id == '') || (strlen($query->act_code) != 32)) { //Reuse the code
+            mt_srand((double) microtime() * 1000000);
+            $code = md5(mt_rand(100000, 99999999) . time());
+            if ($query->id == '') {
+                $ip = sprintf('%u', ip2long($_SERVER['REMOTE_ADDR']));
+                if ($ip < 0 || $ip===false) {
+                    $ip = 0;
+                } //This has changed with php 5
+                $wpdb->query(
+                    "INSERT INTO $t_emails (email_addr,date_subscribed, act_code, subscribe_ip) ".
+                    "VALUES ('" . $wpdb->escape($addr) . "','" . post_notification_date2mysql() ."', '$code', $ip  )"
+                );
+            } else {
+                $wpdb->query(
+                    "UPDATE $t_emails SET act_code = '$code' WHERE email_addr = '" . $wpdb->escape($addr) . "'"
+                );
+            }
+        } else {
+            $code = $query->act_code;
+        }
+        return $code;
+    }
 }

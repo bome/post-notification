@@ -223,8 +223,13 @@ function post_notification_sendmail($maildata, $addr, $code = '', $send = true)
     if (function_exists('post_notificataion_uf_perEmail')) {
         $maildata['body'] = post_notification_arrayreplace($maildata['body'], post_notificataion_uf_perEmail($maildata['id'], $addr));
     }
+    
+    if (get_option('post_notification_unsubscribe_link_in_header') == 'yes') {
+      $maildata['header'] = post_notification_add_additional_headers($addr, $maildata['header']);  
+    } 
 
     if ($send) { //for debugging
+        //wordpress
         $maildata['sent'] = wp_mail($addr, $maildata['subject'], $maildata['body'], $maildata['header']);
     } else {
         $maildata['sent'] = false;
@@ -393,7 +398,20 @@ function post_notification_send()
     }
 }
 
+function post_notification_add_additional_headers($addr, $custom_header) {
+    $custom_header['Precedence'] = "Precedence: bulk";
+    $list_unsubscribe = "List-Unsubscribe:";
+    $unsubscribe_email = get_option('post_notification_unsubscribe_email');
+    if (is_email($unsubscribe_email)) {
+        $list_unsubscribe .= "<mailto:" . $unsubscribe_email . "?subject=Unsubscribe " . $addr . ">,";
+    }
 
-?>
-
-
+    $code = post_notification_get_code($addr);
+    $list_unsubscribeurl = "<" . post_notification_get_mailurl($addr, $code) . ">";
+    $list_unsubscribe .= $list_unsubscribeurl;
+    $xlist_unsubscribe = "X-Unsubscribe: visit " . $list_unsubscribeurl;
+    $custom_header['List-Unsubscribe'] = $list_unsubscribe;
+    $custom_header['X-Unsubscribe'] = $xlist_unsubscribe;
+    
+    return $custom_header;
+}

@@ -110,7 +110,7 @@ function post_notification_admin_sub()
                 echo '</pre>';
             }
             echo '<b>Header:</b><BR><pre>';
-            echo $maildata['header'];
+            var_dump($maildata['header']);
             echo '</pre><br /> <b>Subject:</b><pre>' . $maildata['subject'] . '</pre> </br>';
             echo '<b>Body:</b><BR><pre>';
             echo htmlspecialchars($maildata['body']);
