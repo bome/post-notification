@@ -279,7 +279,7 @@ function post_notification_get_mailurl($addr, $code = '') {
     } else {
         $confurl .= '?';
     }
-    $confurl .= "code=$code&addr=" . urlencode($addr) . "&";
+    $confurl .= "code=".$code."&addr=" . urlencode($addr) . "&";
     return $confurl;
 }
 
@@ -452,5 +452,33 @@ function post_notification_get_code($addr, $code = '') {
             $code = $query->act_code;
         }
         return $code;
+    }
+}
+
+function post_notification_get_list_name() {
+    $page_name = get_option('post_notification_page_name');
+    
+    //get the full server domain
+    $urlparts = parse_url(site_url());
+    $domain = $urlparts [host];
+    
+    if (!isset($page_name) OR strlen($page_name) < 3) {
+        return "default.".$domain;
+    } else {
+        // Strip HTML Tags
+        $clear = strip_tags($page_name);
+// Clean up things like &amp;
+        $clear = html_entity_decode($clear);
+// Strip out any url-encoded stuff
+        $clear = urldecode($clear);
+// Replace non-AlNum characters with space
+        $clear = preg_replace('/[^A-Za-z0-9]/', '', $clear);
+// Replace Multiple spaces with single space
+        $clear = preg_replace('/ +/', ' ', $clear);
+// Trim the string of leading/trailing space
+        $clear = trim($clear);
+        // lower and cut after 10 characters
+        $listname = substr(strtolower($clear), 0, 10);
+        return $listname.".".$domain;
     }
 }

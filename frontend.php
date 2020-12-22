@@ -81,6 +81,13 @@ function post_notification_page_content() {
     $content['header'] = '';
     $content['body'] = '';
 
+    // NEW: One-Click-Unsubscribe
+    if (isset($_POST['List-Unsubscribe']) && 'One-Click' === $_POST['List-Unsubscribe']) {
+        error_log("one-click-unsubscribe");
+        $post_notification_one_click_unsubscribe = true;
+    } else {
+        $post_notification_one_click_unsubscribe = false;
+    }
 
 
     // ******************************************************** //
@@ -145,12 +152,20 @@ function post_notification_page_content() {
         $hdr_nl = "\n";
     }
     $blogname = get_option('blogname');
-
     // ******************************************************** //
     //                      Code Check
     // ******************************************************** //
     //This code is not very nice in performance, but I wanted to keep it as easy to understand as possible. It's not called that often.
-    if (($code != '') && $wpdb->get_var("SELECT id FROM $t_emails WHERE email_addr = '" . $addr . "' AND act_code = '" . $code . "'")) {
+    
+    //check for one-click-unsubscribtion
+    if (($code != '') && ( $post_notification_one_click_unsubscribe === true) && $wpdb->get_var("SELECT id FROM $t_emails WHERE email_addr = '" . $addr . "' AND act_code = '" . $code . "'")) {
+        //directly unsubscribe
+        $mid = $wpdb->get_var("SELECT id FROM $t_emails WHERE email_addr = '$addr'");
+        if ($mid != '') {
+            $wpdb->query("DELETE FROM $t_emails WHERE id = $mid");
+            $wpdb->query("DELETE FROM $t_cats WHERE id = $mid");
+        }
+    } elseif (($code != '') && $wpdb->get_var("SELECT id FROM $t_emails WHERE email_addr = '" . $addr . "' AND act_code = '" . $code . "'")) {
         // ******************************************************** //
         //                   WITH AUTH
         // ******************************************************** //

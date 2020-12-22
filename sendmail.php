@@ -225,7 +225,7 @@ function post_notification_sendmail($maildata, $addr, $code = '', $send = true)
     }
     
     if (get_option('post_notification_unsubscribe_link_in_header') == 'yes') {
-      $maildata['header'] = post_notification_add_additional_headers($addr, $maildata['header']);  
+      $maildata['header'] = post_notification_add_additional_headers($addr, $maildata);  
     } 
 
     if ($send) { //for debugging
@@ -398,20 +398,40 @@ function post_notification_send()
     }
 }
 
-function post_notification_add_additional_headers($addr, $custom_header) {
+function post_notification_add_additional_headers($addr, $maildata) {
+    $custom_header = $maildata['header'];
+    $code = post_notification_get_code($addr, $code);
+    
+    $custom_header['List-Unsubscribe-Post'] = "List-Unsubscribe-Post: List-Unsubscribe=One-Click";
     $custom_header['Precedence'] = "Precedence: bulk";
+    
     $list_unsubscribe = "List-Unsubscribe:";
+    
     $unsubscribe_email = get_option('post_notification_unsubscribe_email');
     if (is_email($unsubscribe_email)) {
-        $list_unsubscribe .= "<mailto:" . $unsubscribe_email . "?subject=Unsubscribe " . $addr . ">,";
+        $list_unsubscribe .= "<mailto:" . $unsubscribe_email . "?subject=Unsubscribe_".$addr."_".$code.">,";
     }
-
-    $code = post_notification_get_code($addr);
-    $list_unsubscribeurl = "<" . post_notification_get_mailurl($addr, $code) . ">";
+    $list_unsubscribeurl = "<" . post_notification_get_unsubscribeurl($addr , $code) . ">";
     $list_unsubscribe .= $list_unsubscribeurl;
     $xlist_unsubscribe = "X-Unsubscribe: visit " . $list_unsubscribeurl;
+    
     $custom_header['List-Unsubscribe'] = $list_unsubscribe;
     $custom_header['X-Unsubscribe'] = $xlist_unsubscribe;
     
+    $post_notification_list_name = post_notification_get_list_name();
+    $custom_header['List-ID'] = "List-ID: <".$post_notification_list_name.">";
+    
     return $custom_header;
+}
+
+function post_notification_get_unsubscribeurl($addr, $code) {
+    $confurl = post_notification_get_link();
+    if (strpos($confurl, '/?') || strpos($confurl, 'index.php?')) {
+        $confurl .= '&';
+    } else {
+        $confurl .= '?';
+    }
+    $confurl .= "code=" . $code . "&addr=" . $addr;
+
+    return $confurl;
 }
