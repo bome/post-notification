@@ -245,15 +245,6 @@ function post_notification_send()
 {
     global $wpdb, $timestart;
 
-    //$$fb workaround: CMA Q&A sometimes replaced the content of the emails!
-    $thisURL = $_SERVER['REQUEST_URI'];
-    if (strpos($thisURL, '/support') !== false || strpos($thisURL, '/contributor') !== false) {
-        // in CMA plugin. Let's bail out.
-        return;
-    }
-    // $$fb end workaround
-
-
     if (get_option('post_notification_lock') == 'db') {
         if (!$wpdb->get_var("SELECT GET_LOCK('" . $wpdb->prefix . 'post_notification_lock' . "', 0)")) {
             return;
