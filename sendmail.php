@@ -246,7 +246,7 @@ function post_notification_send()
     global $wpdb, $timestart;
 
     //$$fb workaround: CMA Q&A sometimes replaced the content of the emails!
-    $thisURL = $_SERVER[REQUEST_URI];
+    $thisURL = $_SERVER['REQUEST_URI'];
     if (strpos($thisURL, '/support') !== false || strpos($thisURL, '/contributor') !== false) {
         // in CMA plugin. Let's bail out.
         return;
@@ -369,7 +369,7 @@ function post_notification_send()
                     $mailssent = $email->id; //Save where we stoped
                     break;
                 }
-                post_notification_sendmail($maildata, $email->email_addr, $email->act_code);
+                post_notification_sendmail($maildata, $email->email_addr, '');
 
                 $maxsend--;
             }
@@ -409,7 +409,7 @@ function post_notification_add_additional_headers($addr, $maildata) {
     
     $unsubscribe_email = get_option('post_notification_unsubscribe_email');
     if (is_email($unsubscribe_email)) {
-        $list_unsubscribe .= "<mailto:" . $unsubscribe_email . "?subject=Unsubscribe_".$addr."_".$code.">,";
+        $list_unsubscribe .= "<mailto:" . $unsubscribe_email . "?subject=Unsubscribe+".$addr."+".$code.">,";
     }
     $list_unsubscribeurl = "<" . post_notification_get_unsubscribeurl($addr , $code) . ">";
     $list_unsubscribe .= $list_unsubscribeurl;

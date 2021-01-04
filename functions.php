@@ -319,8 +319,8 @@ class Walker_post_notification extends Walker
         $output .= str_repeat("\t", $depth * 3);
         $output .= "<li>";
 
-        $output .= "\t" . '<input type="checkbox" name="pn_cats[]" value="' .$category->cat_ID .
-                '" id="cat.' . implode('.', $this->id_list) . '.' . $category->cat_ID. '" ';
+        $output .= "\t" . '<input class="pn_checkbox" type="checkbox" name="pn_cats[]" value="' .$object->cat_ID .
+                '" id="cat.' . implode('.', $this->id_list) . '.' . $object->cat_ID. '" ';
         if (in_array($object->cat_ID, $args['pn_ids'])) {
             $output .= ' checked="checked"';
         }
@@ -359,9 +359,8 @@ function post_notification_get_catselect($all_str = '', $subcats = array())
         $cats = get_categories();
     }
     $walker = new Walker_post_notification;
-
-    $cats_str  = '<script src="'. POST_NOTIFICATION_PATH_URL . '/pncats.js" type="text/javascript" ></script>';
-    $cats_str .=  '<ul class="children"><li><input type="checkbox" name="pn_cats[]" value="0" id="cat.0" onclick="post_notification_cats_init()" ';
+    
+    $cats_str =  '<ul class="children postnotification_cats"><li><input class="pn_checkbox" type="checkbox" name="pn_cats[]" value="0" id="cat.0" onclick="post_notification_cats_init()" ';
     if (in_array(0, $subcats)) {
         $cats_str .= ' checked="checked"';
     }
@@ -460,7 +459,7 @@ function post_notification_get_list_name() {
     
     //get the full server domain
     $urlparts = parse_url(site_url());
-    $domain = $urlparts [host];
+    $domain = $urlparts ['host'];
     
     if (!isset($page_name) OR strlen($page_name) < 3) {
         return "default.".$domain;
@@ -481,4 +480,8 @@ function post_notification_get_list_name() {
         $listname = substr(strtolower($clear), 0, 10);
         return $listname.".".$domain;
     }
+}
+
+function pncats () {
+    wp_enqueue_script('custom-js', POST_NOTIFICATION_PATH_URL . 'pncats.js', array('jquery'), false, false);
 }

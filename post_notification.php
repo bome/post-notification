@@ -65,7 +65,15 @@ function post_notification_febody()
     $content = post_notification_page_content();
     return $content['body'];
 }
+// add js for categories
+add_action('wp_enqueue_scripts', 'pncats');
 
+// add css
+function postnotification_css() {
+    wp_enqueue_style('postnotification_css', POST_NOTIFICATION_PATH_URL . '/css/postnotification.css');
+}
+
+add_action('wp_enqueue_scripts', 'postnotification_css');
 
 /// Add the Admin panel
 function post_notification_admin_adder()
