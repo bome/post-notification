@@ -50,3 +50,15 @@ function post_notification_cats_init(){
 function post_notification_cats_change(){
 
 }
+
+jQuery(document).ready(function () {
+    jQuery('input:radio[name="action"]').change(
+            function () {
+                if (jQuery(this).is(':checked') && jQuery(this).val() == 'unsubscribe') {
+                    jQuery('.postnotification_cats').css('visibility', 'hidden');
+                    console.log("hide");
+                } else {
+                    jQuery('.postnotification_cats').css('visibility', 'visible');
+                }
+            });
+});

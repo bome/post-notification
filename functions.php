@@ -199,8 +199,7 @@ function post_notification_encode($in_str, $charset)
 
 // Generate the Mail header
 // Ak: add unsubscribe options before sending (sendmail.php)
-function post_notification_header($html = true)
-{
+function post_notification_header($html = false) {
     $from_name = str_replace('@@blogname', get_option('blogname'), get_option('post_notification_from_name'));
 
     $from_name = post_notification_encode($from_name, get_option('blog_charset'));
