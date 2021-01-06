@@ -306,7 +306,7 @@ function post_notification_page_content() {
 			// Set params['send'] to false to prevent the confirmation email.
 			$params = array(
 				'send' => true,
-				'header' => '<h1>User account already exists</h1>',
+				'header' => 'User account already exists',
 				'msg' => '<p>Please log into your account.</p>',
 			);
 			$params = apply_filters('pn_can_send_confirmation_email_to_existing_wp_users', $params, $addr);
