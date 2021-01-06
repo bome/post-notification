@@ -13,11 +13,11 @@ add_shortcode( 'post_notification_header', 'post_notification_header_shortcode_f
 add_shortcode( 'post_notification_body', 'post_notification_body_shortcode_function' );
 
 function post_notification_header_shortcode_function() {
-    echo post_notification_feheader();
+    echo "<h2>" . post_notification_feheader() . "</h2>\n";
 }
 
 function post_notification_body_shortcode_function() {
-    echo post_notification_febody();
+    echo post_notification_febody() . "\n";
 }
 
 function post_notification_get_profile_dir($profile = '')

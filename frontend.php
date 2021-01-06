@@ -26,21 +26,21 @@
  * </div>
  *
  * function post_notification_page_content()
- * Returns a array with 'header' and 'body' entries.
+ * Returns an array with 'header' and 'body' entries.
  *
  */
 function post_notification_fe($class = 'entry') {
     global $wpdb;
     $content = post_notification_page_content();
 
-    echo '<h2>' . $content['header'] . '</h2><div class="' . $class . '">' . $content['body'] . '</div>';
+    echo '<h2>' . $content['header'] . "</h2>\n" . '<div class="' . $class . '">' . $content['body'] . "</div>\n";
 }
 
 // $$ak: added Sep 2020
 function post_notification_check_honeypot() {
     $honeypot = filter_input(INPUT_POST, 'verifyemail', FILTER_SANITIZE_SPECIAL_CHARS);
     if (strlen($honeypot) > 0) {
-        error_log("hmm --- honeypot");
+        error_log("Post Notification: detected honeypot");
         return false;
     } else {
         return true;
@@ -81,9 +81,9 @@ function post_notification_page_content() {
     $content['header'] = '';
     $content['body'] = '';
 
-    // NEW: One-Click-Unsubscribe
+    // One-Click-Unsubscribe
     if (isset($_POST['List-Unsubscribe']) && 'One-Click' === $_POST['List-Unsubscribe']) {
-        error_log("one-click-unsubscribe");
+        error_log("(no error) Post Notification: one-click unsubscribe");
         $post_notification_one_click_unsubscribe = true;
     } else {
         $post_notification_one_click_unsubscribe = false;
@@ -152,6 +152,8 @@ function post_notification_page_content() {
         $hdr_nl = "\n";
     }
     $blogname = get_option('blogname');
+	
+	
     // ******************************************************** //
     //                      Code Check
     // ******************************************************** //
@@ -159,7 +161,9 @@ function post_notification_page_content() {
     
     //check for one-click-unsubscribtion
     if (($code != '') && ( $post_notification_one_click_unsubscribe === true) && $wpdb->get_var("SELECT id FROM $t_emails WHERE email_addr = '" . $addr . "' AND act_code = '" . $code . "'")) {
-        //directly unsubscribe
+        // ******************************************************** //
+        //         one-click unsubscribe WITH AUTH
+        // ******************************************************** //
         $mid = $wpdb->get_var("SELECT id FROM $t_emails WHERE email_addr = '$addr'");
         if ($mid != '') {
             $wpdb->query("DELETE FROM $t_emails WHERE id = $mid");
@@ -253,11 +257,7 @@ function post_notification_page_content() {
 
         $content['header'] = get_option('post_notification_page_name');
 
-
-
-
         $id = $wpdb->get_var("SELECT id FROM $t_emails  WHERE email_addr = '$addr'");
-
 
         if (get_option('post_notification_show_cats') == 'yes') {
             $subcats_db = $wpdb->get_results("SELECT cat_id FROM $t_cats  WHERE id = $id");
@@ -267,7 +267,6 @@ function post_notification_page_content() {
                     $subcats[] = $subcat->cat_id;
                 }
             }
-
 
             // Get cats listing
             $cats_str = post_notification_get_catselect($post_notification_strings['all'], $subcats);
@@ -290,6 +289,37 @@ function post_notification_page_content() {
         //                   WITHOUT AUTH
         // ******************************************************** //
         $code = '';
+		
+		// ******************************************************** //
+		//             Shortcut: maybe we don't want 
+		//             to allow subscription if we already
+		//             have a Wordpress account
+		// ******************************************************** //
+		if (($action == "subscribe" || $action == '') && is_email($addr) && email_exists($addr)) {
+			// filter so that a theme can prevent the confirmation email if a WP 
+			// user with that email address already exists.
+			// todo: Language support missing for filter
+			
+			// pn_can_send_confirmation_email_to_existing_wp_users filter:
+			// on entry, get $params array with "send", "header" and "msg" fields.
+			// on exit, return the possibly modified $params array.
+			// Set params['send'] to false to prevent the confirmation email.
+			$params = array(
+				'send' => true,
+				'header' => '<h1>User account already exists</h1>',
+				'msg' => '<p>Please log into your account.</p>',
+			);
+			$params = apply_filters('pn_can_send_confirmation_email_to_existing_wp_users', $params, $addr);
+
+			if ($params['send'] === false) {
+				error_log("(no error) Post Notification: no confirmation email sent to existing user: " . $addr);
+				//Output Page
+				$content['header'] = $params['header'];
+				$msg = $params['msg'];
+				return $content; //here it ends - don't show the selection screen.
+			}
+		}
+		
         if (is_email($addr) && post_notification_check_captcha() && post_notification_check_honeypot()) {
             // ******************************************************** //
             //                      SUBSCRIBE
@@ -297,30 +327,13 @@ function post_notification_page_content() {
             if ($action == "subscribe" || $action == '') {
                 $conf_url = post_notification_get_mailurl($addr);
 
-                // added filter to turn mails to wp-users off
-                // todo: Language support missing for filter
-                // 'send' => true if no filter is used
-                $sendmailtowpusers = array(
-                    'send' => true,
-                    'header' => 'User exists in Database',
-                    'msg' => 'No mail sent.',
-                );
-                $sendmailtowpusers = apply_filters('pn_sendmailtowpusers', $sendmailtowpusers, $addr);
-
-                if (email_exists($addr) AND $sendmailtowpusers['send'] === false) {
-                    error_log("Post Notification: No Mail sent to: " . $addr);
-                    //Output Page
-                    $content['header'] = $sendmailtowpusers['header'];
-                    $msg = $sendmailtowpusers['msg'];
-                    return $content; //here it ends - We don't want to show the selection screen.
-                }
-                // Build  mail 
+                // build confirmation email 
                 $mailmsg = post_notification_ldfile('confirm.tmpl');
 
                 $mailmsg = str_replace('@@addr', $addr, $mailmsg);
                 $mailmsg = str_replace('@@conf_url', $conf_url, $mailmsg);
 
-                error_log("Post Notification: subscribe -- sending authentication email to: $addr");
+                error_log("(no error) Post Notification: subscribe -- sending authentication email to: $addr");
                 wp_mail($addr, "$blogname - " . get_option('post_notification_page_name'), $mailmsg, post_notification_header());
 
                 //Output Page
@@ -376,7 +389,7 @@ function post_notification_page_content() {
         $msg = str_replace('@@vars', $vars, $msg);
 
         if (get_option('post_notification_honeypot') == 'yes') {
-            // error_log("honeypot_active");
+            // error_log("(no error) Post Notification: honeypot_active");
             echo "<style>
                 #verifyemail{
                     opacity: 0;
