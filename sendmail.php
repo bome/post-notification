@@ -390,27 +390,55 @@ function post_notification_send()
 }
 
 function post_notification_add_additional_headers($addr, $maildata) {
-    $custom_header = $maildata['header'];
+	// $$fb 2020-01-06 testing state:
+	// AppleMail on iPhone shows Unsubscribe button
+	// AppleMail on MacOS does not show Unsubscribe button, but does so for e.g. emails from Google with same types of headers.
+	// all other tested email clients never show an unsubscribe button
+	
+	$includeURL = true;
+	
+	$custom_header = $maildata['header'];
     $code = post_notification_get_code($addr, $code);
     
     $custom_header['List-Unsubscribe-Post'] = "List-Unsubscribe-Post: List-Unsubscribe=One-Click";
     $custom_header['Precedence'] = "Precedence: bulk";
     
-    $list_unsubscribe = "List-Unsubscribe:";
+    $list_unsubscribe = "";
+	$list_unsubscribeurl = "";
     
     $unsubscribe_email = get_option('post_notification_unsubscribe_email');
     if (is_email($unsubscribe_email)) {
-        $list_unsubscribe .= "<mailto:" . $unsubscribe_email . "?subject=Unsubscribe+".$addr."+".$code.">,";
-    }
-    $list_unsubscribeurl = "<" . post_notification_get_unsubscribeurl($addr , $code) . ">";
-    $list_unsubscribe .= $list_unsubscribeurl;
-    $xlist_unsubscribe = "X-Unsubscribe: visit " . $list_unsubscribeurl;
+        $list_unsubscribe .= "<mailto:" . $unsubscribe_email . "?subject=Unsubscribe[".$addr."]".$code.">";
+    } else {
+		$unsubscribe_email = "";
+	}
+
+	if ($includeURL) {
+		$list_unsubscribeurl = post_notification_get_unsubscribeurl($addr , $code);
+	}
     
-    $custom_header['List-Unsubscribe'] = $list_unsubscribe;
-    $custom_header['X-Unsubscribe'] = $xlist_unsubscribe;
+	if (!empty($list_unsubscribeurl)) {
+		if (!empty($list_unsubscribe)) {
+			$list_unsubscribeurl .= ",";
+		}
+		$list_unsubscribe .= "<" . $list_unsubscribeurl . ">";
+		$xlist_unsubscribe = "visit " . $list_unsubscribeurl;
+	} else {
+		if (!empty($unsubscribe_email)) {
+			$xlist_unsubscribe = "send an email to " . $unsubscribe_email;
+		}
+	}
+		
+    if (!empty($list_unsubscribe)) {
+		$custom_header['List-Unsubscribe'] = "List-Unsubscribe: " . $list_unsubscribe;
+	}
+	if (!empty($xlist_unsubscribe)) {
+		$custom_header['X-Unsubscribe'] = "X-Unsubscribe: " . $xlist_unsubscribe;
+	}
     
-    $post_notification_list_name = post_notification_get_list_name();
-    $custom_header['List-ID'] = "List-ID: <".$post_notification_list_name.">";
+	//$$fb 2020-01-06: including List-ID header will cause AppleMail on iOS to not show the Unsubscribe button!
+    //$post_notification_list_name = post_notification_get_list_name();
+    //$custom_header['List-ID'] = "List-ID: <".$post_notification_list_name.">";
     
     return $custom_header;
 }
