@@ -484,3 +484,13 @@ function post_notification_get_list_name() {
 function pncats () {
     wp_enqueue_script('custom-js', POST_NOTIFICATION_PATH_URL . 'pncats.js', array('jquery'), false, false);
 }
+
+/**
+ * Check if WooCommerce is activated
+ */
+if ( ! function_exists( 'is_woocommerce_activated' ) ) {
+	function is_woocommerce_activated() {
+		if ( class_exists( 'woocommerce' ) ) { return true; } else { return false; }
+	}
+}
+

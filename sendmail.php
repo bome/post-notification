@@ -206,6 +206,7 @@ function post_notification_create_email($id, $template = '')
     $rv['subject'] = $subject;
     $rv['body'] = $body;
     $rv['header'] = $header;
+    $rv['title'] = $post_title;
     return $rv;
 }
 
@@ -229,8 +230,19 @@ function post_notification_sendmail($maildata, $addr, $code = '', $send = true)
     } 
 
     if ($send) { //for debugging
-        //wordpress
-        $maildata['sent'] = wp_mail($addr, $maildata['subject'], $maildata['body'], $maildata['header']);
+        // Use woocommerce mailer if installed and activated woocommerce available (todo: make option in admin backend)
+        if (is_woocommerce_activated()) {
+            global $woocommerce;
+
+            // wrap in WC email
+            $mailer = WC()->mailer();
+            $message = $mailer->wrap_message($maildata['title'], $maildata['body']);
+			// send off
+            $maildata['sent'] = $mailer->send($addr, $maildata['subject'], $message, $maildata['header'], array());
+        } else {
+            //wordpress
+            $maildata['sent'] = wp_mail($addr, $maildata['subject'], $maildata['body'], $maildata['header']);
+        }
     } else {
         $maildata['sent'] = false;
     }
