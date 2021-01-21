@@ -317,7 +317,12 @@ function post_notification_admin_sub()
     if (file_exists(POST_NOTIFICATION_DATA)) {
         $dir_handle=opendir(POST_NOTIFICATION_DATA);
         while (false !== ($file = readdir($dir_handle))) {
-            if (@is_dir(POST_NOTIFICATION_DATA . $file) && $file[0] != '.' && $file[0] != '_') {
+            if (@is_dir(POST_NOTIFICATION_DATA . $file) 
+					&& $file[0] != '.'
+					&& $file[0] != '_'
+					&& $file != "css"
+					&& $file != "scss"
+					) {
                 if (post_notification_is_profile(POST_NOTIFICATION_DATA . $file)) {
                     $profile_list[] = $file;
                 }
@@ -332,7 +337,12 @@ function post_notification_admin_sub()
 
     $dir_handle=opendir(POST_NOTIFICATION_PATH);
     while (false !== ($file = readdir($dir_handle))) {
-        if (is_dir(POST_NOTIFICATION_PATH . $file) && $file[0] != '.' && $file[0] != '_') {
+        if (is_dir(POST_NOTIFICATION_PATH . $file)
+				&& $file[0] != '.'
+				&& $file[0] != '_'
+				&& $file != "css"
+				&& $file != "scss"
+				) {
             if (post_notification_is_profile(POST_NOTIFICATION_PATH . $file)) {
                 if (!in_array($file, $profile_list)) {
                     $profile_list[] = $file;
