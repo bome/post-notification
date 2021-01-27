@@ -7,16 +7,16 @@ function post_notification_admin_sub()
     echo '<h3>' . __('Test', 'post_notification') . '</h3>'; ?>
 
 <form id="test" method="post" action="admin.php?page=post_notification/admin.php&amp;action=test">
-<table width="100%">
+<table class="post_notification_admin_table">
 	
 	<tr class="alternate">
-		<th style="text-align:right;padding-right:10px;"><?php _e('Post id:', 'post_notification') ?></th>
+		<th class="pn_th_caption"><?php _e('Post id:', 'post_notification') ?></th>
 		<td>
 			<input name="pid" type="text" size="35" value="<?php  echo $_POST['pid'] ?>" />
 		</td>
 	</tr>
 	<tr class="alternate">
-		<td />
+		<td></td>
 		<td>
 			<?php _e('This must be the ID of the post you want to send. You can find the ID under Manage->Posts.', 'post_notification') ?>
 		</td>
@@ -27,7 +27,7 @@ function post_notification_admin_sub()
         $email = get_option('post_notification_from_email');
     } ?>
 	<tr class="alternate">
-		<th style="text-align:right;padding-right:10px;"><?php _e('Email:', 'post_notification') ?></th>
+		<th class="pn_th_caption"><?php _e('Email:', 'post_notification') ?></th>
 		<td>
 			<input name="email" type="text" size="35" value="<?php  echo $email ?>" />
 		</td>
@@ -39,7 +39,7 @@ function post_notification_admin_sub()
     }
     $dir_handle=opendir(post_notification_get_profile_dir());
     while (false !== ($file = readdir($dir_handle))) {
-        if (substr($file, -5) == '.html' or substr($file, -4) == '.txt') {
+        if (substr($file, -5) === '.html' || substr($file, -4) === '.txt') {
             $en_templates .= "<option value=\"$file\" ";
             if ($file == $template) {
                 $en_templates .= ' selected="selected"';
@@ -49,7 +49,7 @@ function post_notification_admin_sub()
     }
     closedir($dir_handle); ?>
 	<tr class="alternate">
-		<th style="text-align:right;padding-right:10px;"><?php _e('Template:', 'post_notification'); ?></th>
+		<th class="pn_th_caption"><?php _e('Template:', 'post_notification'); ?></th>
 		<td>
 	        <select name="template" >
 				<?php  echo $en_templates; ?>
@@ -57,11 +57,11 @@ function post_notification_admin_sub()
 		</td>
 	</tr>
 	<tr class="alternate">
-		<th style="text-align:right;padding-right:10px;"><?php _e('Do not send mail:', 'post_notification'); ?></th>
+		<th class="pn_th_caption"><?php _e('Do not send mail:', 'post_notification'); ?></th>
 		<td>
 	        <input type="checkbox" name="nosend" value="true"
 	        	<?php
-                    if ($_POST['nosend'] == 'true') {
+                    if ($_POST['nosend'] === 'true') {
                         echo ' checked="checked" ';
                     } ?> 
 	        />	
@@ -79,7 +79,7 @@ function post_notification_admin_sub()
 <?php
     
     //send of email
-    if (isset($_POST['email']) && isset($_POST['pid'])) {
+    if (isset($_POST['email'], $_POST['pid'])) {
         echo '<h3>' . __('Email', 'post_notification') . '</h3>';
         $t_emails = $wpdb->prefix . 'post_notification_emails';
         
@@ -99,7 +99,7 @@ function post_notification_admin_sub()
             $GLOBALS['wp_query']->init_query_flags();
             
             $maildata = post_notification_create_email($_POST['pid'], $_POST['template']);
-            $send = ($_POST['nosend'] == 'true') ? false :  true;
+            $send = $_POST['nosend'] !== 'true';
             
             $maildata = post_notification_sendmail($maildata, $email->email_addr, '', $send); //returns the modified body.
             if ($maildata['sent']==false) {

@@ -103,13 +103,7 @@ function post_notification_admin_sub()
     //------------ Some info.....
     $nummails = $wpdb->get_var("SELECT COUNT(*) FROM $t_emails WHERE gets_mail = 1");
     echo '<p>'. __('Number of Subscribers:', 'post_notification') . "<b> $nummails </b></p>";
-    //------------ Some advertising ----
-    if ($nummails > 500) {
-        echo '<p><b>' . __('Looks like you are realy using this plugin.', 'post_notification') .
-        '</b> <a href="http://pn.xn--strbe-mva.de/forum.php?req=thread&postid=8">' . __('What about a donation?.', 'post_notification') . '</a></p>';
-    }
-    
-    
+
     echo '<p>' . __('The time is:', 'post_notification');
     echo ' <b>' . post_notification_date_i18n_tz($datestr, time()) . '</b></p>'; //Can use i18n_time as it uses date
     
