@@ -215,7 +215,7 @@ function post_notification_admin_sub() {
             }
 
             echo '<th class="pn_mail_address">' . __('Address', 'post_notification') . '</th>
-                <th class="pn_user_link">' . __('User', 'user') . '</th>
+                <th class="pn_user_link">' . __('Nickname', 'nick') . '</th>
                 <th class="pn_subscribed_cats">' . __('Subscribed categories', 'post_notification') . '</th>
 				<th class="pn_accepted"><b>' . __('Accepted', 'post_notification') . '</th>
 				<th class="pn_date_accepted"><b>' . __('Date accepted', 'post_notification') . '</th>
@@ -229,8 +229,6 @@ function post_notification_admin_sub() {
         foreach ($emails as $email) {
             $email_addr = $email->email_addr;
             $gets_mail = $email->gets_mail;
-            $wp_user_account = pn_get_wp_user_link($email_addr);
-//          $last_modified = $email->last_modified;
             $datestr = get_option('date_format') . ' ' . get_option('time_format');
             $date_subscribed = post_notification_date_i18n_tz($datestr, post_notification_mysql2gmdate($email->date_subscribed));
             $id = $email->id;
@@ -275,7 +273,7 @@ function post_notification_admin_sub() {
                     echo "<td class=\"pn_remove\"><input type=\"checkbox\" name=\"removeEmail[]\" value=\"$email_addr\" /></td>";
                 }
                 echo "<td class=\"pn_mail_address\"><a href=\"$modlink\" target=\"_blank\">$email_addr<a></td>";
-                echo "<td class=\"pn_user_link\">$wp_user_account</td>";
+                echo "<td class=\"pn_user_link\">". pn_get_wp_user_link($email_addr) ."</td></td>";
                 echo "<td class=\"pn_subscribed_cats\">$catnames</td>";
                 echo "<td class=\"pn_accepted\">$gets_mail</td>";
                 echo "<td class=\"pn_date_accepted\">$date_subscribed</td>";
