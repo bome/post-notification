@@ -28,9 +28,9 @@ function post_notificataion_uf_perPost($post_id)
 {
     //This is the easiest way to create array with a low possibility of errors
     $rv = array();
-    $cats =  wp_get_post_categories($post_id);
+    $cats = wp_get_post_categories($post_id);
     $tags = wp_get_post_tags($post_id);
-    $rv['@@categories'] =  wp_get_post_categories($post_id);
+    $rv['@@categories'] = wp_get_post_categories($post_id);
     return $rv;
 }
 
@@ -45,10 +45,10 @@ function post_notificataion_uf_perPost($post_id)
 function post_notificataion_uf_perEmail($post_id, $emailadd)
 {
     $rv = array();
-    srand((double)microtime()*1000000);
-    
+    mt_srand((double)microtime() * 1000000);
+
     //Always make shure, that there is a value assigned, otherwise the var will not be replaced.
-    if (rand(0, 1000) == 50) {
+    if (mt_rand(0, 1000) == 50) {
         $rv['@@lucky'] = "Today is your lucky day";
     } else {
         $rv['@@lucky'] = "";

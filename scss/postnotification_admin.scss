@@ -2,6 +2,57 @@
 
 .post_notification_admin_table {
   width: 100%;
+  color: #333333;
+  a {
+    color: #333333;
+    &:visited {
+      color: #333333;
+    }
+    &:hover {
+      color: #333333;
+      text-decoration: #333333 underline;
+    }
+  }
+
+  th {
+    text-align: left;
+    font-weight: bold ;
+    color: #555555;
+  }
+  .pn_remove {
+    width: 5%;
+    text-align: center;
+  }
+  .pn_mail_address {
+    width: 22%;
+    padding-left: 5px;
+    min-width: 210px;
+  }
+  .pn_accepted {
+    width: 3%;
+    text-align: center;
+    min-width: 40px;
+  }
+  .pn_date_accepted {
+    width: 15%;
+    padding-left: 5px;
+    min-width: 160px;
+  }
+  .pn_subscribed_cats {
+    width: 20%;
+    padding-left: 5px;
+    min-width: 225px;
+  }
+  .pn_ip {
+    width: 6%;
+    padding-left: 5px;
+    min-width: 100px;
+  }
+  .pn_user_link {
+    width: 10%;
+    text-align: center;
+    min-width: 120px;
+  }
 
   tr {
     margin: 7px;
@@ -34,27 +85,32 @@
 
 #pn_admin_menu {
   ul {
-
     list-style-type: none;
     margin: 0;
     padding: 0;
     overflow: hidden;
-    background-color: #bbbbbb;
+    vertical-align: middle;
+
   }
 
   li {
     float: left;
+    background-color: #bbbbbb;
+    border: 1px solid #333333;
+    margin: 3px;
+
+    border-radius: 2px;
   }
 
   li a {
     display: block;
-    color: black;
+    color: #666666;
     text-align: center;
-    padding-top: 8px;
-    padding-right: 8px;
-    padding-left: 8px;
-    padding-bottom: 4px;
+    padding: 8px;
     text-decoration: none;
+    font-weight: bold;
+    font-size: 120%;
+
   }
 
   /* Change the link color to #111 (black) on hover */

@@ -26,14 +26,14 @@ function post_notification_admin_sub()
 	
 	<li>
 		<strong><?php _e('Integration', 'post_notification'); ?></strong>
-		<p><?php _e('Post Notification always needs a special Post Notification Page. This may be a page, post enty or a special .php page..', 'post_notification'); ?></p>
+		<p><?php _e('Post Notification always needs a special Post Notification Page. This may be a page, post entry or a special .php page..', 'post_notification'); ?></p>
 		<p><?php _e('There are several ways of integration:', 'post_notification'); ?>
 		<ul>
 			<li><?php 	echo str_replace('@@repl', __('Replacement in Posts', 'post_notification'), __('The strings @@post_notification_header and @@post_notification_body will be replaced in your post in case the "@@repl" option ist turned on in the settings.', 'post_notification')) . ' ';
     echo __('Therefore a new page with @@post_notification_header in the title and @@post_notification_body in the Post itself must be created.', 'post_notification') . ' ';
-    echo __('This is done automaticly by the "Add Post Notification page" option. If you do not do that you have to add the post-id/page-id in the "Link to the Post Notification page" setting by hand.', 'post_notification'); ?>
+    echo __('This is done automatically by the "Add Post Notification page" option. If you do not do that you have to add the post-id/page-id in the "Link to the Post Notification page" setting by hand.', 'post_notification'); ?>
 			</li>
-			<li><?php	echo __('Use the Post Notification template. The Template is automaticly copied to your theme. This method might have some trouble with badly written themes. But has a little better performance.', 'post_notification'). ' ';
+			<li><?php	echo __('Use the Post Notification template. The Template is automatically copied to your theme. This method might have some trouble with badly written themes. But has a little better performance.', 'post_notification'). ' ';
     echo __('If you do not use the "Add Post Notification page" option you have to add the post-id in the "Link to the Post Notification page" setting by hand.', 'post_notification'); ?>
 			</li>
 
@@ -53,7 +53,8 @@ function post_notification_admin_sub()
 		<p><em> <?php _e('If you want to modify the templates please copy your favorite template in to the folder &lt;wp-dir&gt;/wp-content/post_notification. Afterwards rename it to whatever you like.', 'post_notification'); ?></em>
 			
 		</p>
-		<p><?php _e('Vars used in the templates', 'post_notification'); ?>
+		<p>
+            <?php _e('Vars used in the templates', 'post_notification'); ?>
 			<ul>
 				<li>@@title - <?php _e('The title of the post', 'post_notification'); ?></li>
 				<li>@@author - <?php _e('The author of the post', 'post_notification'); ?></li>
@@ -66,7 +67,8 @@ function post_notification_admin_sub()
 				<li>@@conf_url - <?php _e('The URL that has to be visited to verify the subscription.', 'post_notification'); ?></li>
 			</ul>
 		</p>
-		<p><?php _e('The different templates', 'post_notification'); ?> <br />
+		<p>
+            <?php _e('The different templates', 'post_notification'); ?> <br />
 			<?php _e('I know the names are not the best, but I\'m to lazy too change them.', 'post_notification'); ?> 
 			<ul>
 				<li>subscribe.tmpl - <?php _e('This is the subscription page.', 'post_notification'); ?></li>

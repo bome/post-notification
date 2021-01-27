@@ -205,7 +205,7 @@ function post_notification_admin_sub()
 
         //Add the page
 
-        if ($_POST['add_page']=="add") {
+        if ($_POST['add_page']==="add") {
 
 
             //Database change in 2.1
@@ -218,7 +218,7 @@ function post_notification_admin_sub()
 
 
             //Collect the Data
-            if (get_option('post_notification_filter_include') == 'no') {
+            if (get_option('post_notification_filter_include') === 'no') {
                 $post_title = $_POST['page_name'];
                 $post_content = __('If you can read this, something went wrong. :-(', 'post_notification');
             } else {
@@ -232,7 +232,7 @@ function post_notification_admin_sub()
             $post_ID = wp_insert_post($post_data);
 
             //Add meta if we are using the Template.
-            if (get_option('post_notification_filter_include') == 'no') {
+            if (get_option('post_notification_filter_include') === 'no') {
                 add_post_meta($post_ID, '_wp_page_template', 'post_notification_template.php', true);
             }
 
@@ -254,44 +254,44 @@ function post_notification_admin_sub()
      */
 
 
-    if (get_option('post_notification_hdr_nl') == 'rn') {
+    if (get_option('post_notification_hdr_nl') === 'rn') {
         $hdr_rn = $selected;
     } else {
         $hdr_n = $selected;
     }
 
-    if (get_option('post_notification_show_content') == 'no') {
+    if (get_option('post_notification_show_content') === 'no') {
         $contentN = $selected;
     } else {
         $contentY = $selected;
     }
 
-    if (get_option('post_notification_send_default') == 'no') {
+    if (get_option('post_notification_send_default') === 'no') {
         $sendN = $selected;
     } else {
         $sendY = $selected;
     }
 
-    if (get_option('post_notification_send_private') == 'no') {
+    if (get_option('post_notification_send_private') === 'no') {
         $privateN = $selected;
     } else {
         $privateY = $selected;
     }
 
-    if (get_option('post_notification_send_page') == 'no') {
+    if (get_option('post_notification_send_page') === 'no') {
         $pageN = $selected;
     } else {
         $pageY = $selected;
     }
 
 
-    if (get_option('post_notification_page_meta') == 'no') {
+    if (get_option('post_notification_page_meta') === 'no') {
         $metaN = $selected;
     } else {
         $metaY = $selected;
     }
 
-    if (get_option('post_notification_filter_include') == 'no') {
+    if (get_option('post_notification_filter_include') === 'no') {
         $filter_includeN = $selected;
     } else {
         $filter_includeY = $selected;
@@ -300,7 +300,7 @@ function post_notification_admin_sub()
 
 
 
-    if (get_option('post_notification_uninstall') == 'yes') { //rather have No
+    if (get_option('post_notification_uninstall') === 'yes') { //rather have No
         $uninstallY = $selected;
     } else {
         $uninstallN = $selected;
@@ -318,10 +318,10 @@ function post_notification_admin_sub()
         $dir_handle=opendir(POST_NOTIFICATION_DATA);
         while (false !== ($file = readdir($dir_handle))) {
             if (@is_dir(POST_NOTIFICATION_DATA . $file) 
-					&& $file[0] != '.'
-					&& $file[0] != '_'
-					&& $file != "css"
-					&& $file != "scss"
+					&& $file[0] !== '.'
+					&& $file[0] !== '_'
+					&& $file !== "css"
+					&& $file !== "scss"
 					) {
                 if (post_notification_is_profile(POST_NOTIFICATION_DATA . $file)) {
                     $profile_list[] = $file;
@@ -363,7 +363,7 @@ function post_notification_admin_sub()
     $template = get_option('post_notification_template');
     $dir_handle=opendir(post_notification_get_profile_dir($profile));
     while (false !== ($file = readdir($dir_handle))) {
-        if (substr($file, -5) == '.html' or substr($file, -4) == '.txt') {
+        if (substr($file, -5) === '.html' or substr($file, -4) == '.txt') {
             $en_templates .= "<option value=\"$file\" ";
             if ($file == $template) {
                 $en_templates .= ' selected="selected"';
@@ -419,7 +419,7 @@ function post_notification_admin_sub()
 		</td>
 	</tr>
 	<tr class="pn_row">
-		<td />
+		<td></td>
 		<td class="pn_td">
 			<?php _e('This option sets the time to wait before sending an Email. So if you have an nervous finger you can unpublish your post quickly and no mails are sent.', 'post_notification'); ?>
 		</td>
@@ -433,16 +433,16 @@ function post_notification_admin_sub()
 		<th class="pn_th_caption"><?php _e('Copy complete post in to the mail:', 'post_notification') ?></th>
 		<td class="pn_td">
 	        <select name="show_content" >
-				<option value="no"      <?php  if (get_option('post_notification_show_content') == 'no') {
+				<option value="no"      <?php  if (get_option('post_notification_show_content') === 'no') {
         echo $selected;
     } ?>><?php  _e('No', 'post_notification'); ?></option>
-				<option value="yes"     <?php  if (get_option('post_notification_show_content') == 'yes') {
+				<option value="yes"     <?php  if (get_option('post_notification_show_content') === 'yes') {
         echo $selected;
     } ?>><?php  _e('Yes', 'post_notification'); ?></option>
-				<option value="more"    <?php  if (get_option('post_notification_show_content') == 'more') {
+				<option value="more"    <?php  if (get_option('post_notification_show_content') === 'more') {
         echo $selected;
     } ?>><?php  _e('Up to the more-tag.', 'post_notification'); ?></option>
-				<option value="excerpt"	<?php  if (get_option('post_notification_show_content') == 'excerpt') {
+				<option value="excerpt"	<?php  if (get_option('post_notification_show_content') === 'excerpt') {
         echo $selected;
     } ?>><?php  _e('The excerpt', 'post_notification'); ?></option>
 		</select>
@@ -454,7 +454,7 @@ function post_notification_admin_sub()
 		<td class="pn_td"><input name="read_more" type="text" size="35" value="<?php  echo get_option('post_notification_read_more'); ?>" /></td>
 	</tr>
 	<tr class="pn_row">
-		<td />
+		<td></td>
 		<td class="pn_td"><?php _e('This text is put behind the content in case the mail is truncated. E.g. because of the more-tag.', 'post_notification'); ?>
 		</td>
 	</tr>
@@ -479,7 +479,7 @@ function post_notification_admin_sub()
 		</td>
 	</tr>
 	<tr class="pn_row">
-		<td />
+		<td></td>
 		<td class="pn_td">
 			<?php _e('Templates with the extension .txt are sent as text-mails. Templates with the extension .html are sent as HTML-mails', 'post_notification'); ?>
 		</td>
@@ -490,7 +490,7 @@ function post_notification_admin_sub()
 		<td class="pn_td"><input name="subject" type="text" size="35" value="<?php  echo get_option('post_notification_subject'); ?>" /></td>
 	</tr>
 	<tr class="pn_row">
-		<td />
+		<td></td>
 		<td class="pn_td"><?php _e('Use @@blogname as placeholder for the blog name.', 'post_notification'); ?>
 			<?php _e('Use @@title as placeholder for the title of the post.', 'post_notification'); ?>
 		</td>
@@ -503,7 +503,7 @@ function post_notification_admin_sub()
 		<td class="pn_td"><input name="from_name" type="text" size="35" value="<?php  echo get_option('post_notification_from_name'); ?>" /></td>
 	</tr>
 	<tr class="pn_row">
-		<td />
+		<td></td>
 		<td class="pn_td"><?php _e('Use @@blogname as placeholder for the blog name.', 'post_notification'); ?>
 		</td>
 	</tr>
@@ -516,7 +516,7 @@ function post_notification_admin_sub()
 	<tr class="pn_row">
 		<th class="pn_th_caption"><?php _e('Show "saved.tmpl" when saving frontend settings.', 'post_notification'); ?></th>
 		<?php
-        if (get_option('post_notification_saved_tmpl') == 'yes') {
+        if (get_option('post_notification_saved_tmpl') === 'yes') {
             $savedTmplY = $selected;
         } else {
             $savedTmplN = $selected;
@@ -529,7 +529,7 @@ function post_notification_admin_sub()
 		</td>
 	</tr>
 	<tr class="pn_row">
-		<td />
+		<td></td>
 		<td class="pn_td">
 			<?php _e('You can add an additional saved.tmpl file to your profile. If you select this option this file will be shown to the subscriber when he saves his settings.', 'post_notification'); ?>
 		</td>
@@ -567,7 +567,7 @@ function post_notification_admin_sub()
 		</td>
 	</tr>
 	<tr class="pn_row">
-		<td />
+		<td></td>
 		<td class="pn_td">
 			<?php _e('According to the PHP-specification \r\n must be used. Never the less quite a few servers have trouble if they get a \r\n instead of \n. You\'ll see part of the header in your mail if you have the wrong selection.', 'post_notification') ?>
 		</td>
@@ -576,7 +576,7 @@ function post_notification_admin_sub()
 		<tr class="pn_row">
 		<th class="pn_th_caption"><?php _e('Locking:', 'post_notification') ?></th>
 		<?php
-            if (get_option('post_notification_lock') == 'db') {
+            if (get_option('post_notification_lock') === 'db') {
                 $lockDB= $selected;
             } else {
                 $lockFILE = $selected;
@@ -589,7 +589,7 @@ function post_notification_admin_sub()
 		</td>
 	</tr>
 	<tr class="pn_row">
-		<td />
+		<td></td>
 		<td class="pn_td">
 			<?php 	_e('Try using database locking if you are geting duplicate messages.', 'post_notification') ;
     echo  ' ' . '<a href="http://php.net/manual/function.flock.php">' . __('More information.', 'post_notification') . '</a>'; ?>
@@ -639,7 +639,7 @@ function post_notification_admin_sub()
 	</tr>
 
 	<tr class="pn_row">
-		<td />
+		<td></td>
 		<td class="pn_td">
 			<?php
                 _e('Some plugins use filters to modify the content of a post. You might not want some of them modifying your mails. Finding the right filters might need some playing around.', 'post_notification') ; ?>
@@ -652,9 +652,9 @@ function post_notification_admin_sub()
 		<tr class="pn_row">
 		<th class="pn_th_caption"><?php _e('When to send:', 'post_notification') ?></th>
 		<?php
-            if (get_option('post_notification_sendcheck') == 'head') {
+            if (get_option('post_notification_sendcheck') === 'head') {
                 $sendhead= $selected;
-            } elseif (get_option('post_notification_sendcheck') == 'footer') {
+            } elseif (get_option('post_notification_sendcheck') === 'footer') {
                 $sendfoot = $selected;
             } else {
                 $sendshutdown = $selected;
@@ -668,7 +668,7 @@ function post_notification_admin_sub()
 		</td>
 	</tr>
 	<tr class="pn_row">
-		<td />
+		<td></td>
 		<td class="pn_td">
 			<?php 	_e('By default PN sends mails after the page has been rendered and sent to the user (shutdown).' .
                     ' Some hosters kill all scripts after the connection has been closed. ' .
@@ -678,7 +678,7 @@ function post_notification_admin_sub()
 	</tr>
 
 	<?php
-    if (get_option('post_notification_auto_subscribe') == 'yes') { //rather have No
+    if (get_option('post_notification_auto_subscribe') === 'yes') { //rather have No
         $auto_subscribeY = $selected;
     } else {
         $auto_subscribeN = $selected;
@@ -733,7 +733,7 @@ function post_notification_admin_sub()
  		<td class="pn_td"><?php echo post_notification_get_catselect('', $selected_cats); ?></td>
  	</tr>
  	<tr class="pn_row">
- 		<td />
+ 		<td></td>
  		<td class="pn_td"><?php _e('The categories which will be automatically selected when a user subscribes, and which is also default for the Manage Addresses dialog. Choosing a category includes all subcategories.', 'post_notification'); ?>
  		</td>
  	</tr>
@@ -747,7 +747,7 @@ function post_notification_admin_sub()
 		<td class="pn_td"><input name="captcha" type="text" size="60" value="<?php  echo get_option('post_notification_captcha'); ?>" /></td>
 	</tr>
 	<tr class="pn_row">
-		<td />
+		<td></td>
 		<td class="pn_td">
 			<?php _e('Number of Captcha-chars. 0 is no Captcha', 'post_notification'); ?><br />
 			<b><?php _e('Warning:', 'post_notification'); ?></b>
@@ -757,7 +757,7 @@ function post_notification_admin_sub()
         <?php
             // added setting for honeypot
 
-            if (get_option('post_notification_honeypot') == 'yes') { //rather have No
+            if (get_option('post_notification_honeypot') === 'yes') { //rather have No
                 $honeypotY = $selected;
             } else {
                 $honeypotN = $selected;
@@ -765,7 +765,7 @@ function post_notification_admin_sub()
             
             // added setting for header setting
             
-            if (get_option('post_notification_unsubscribe_link_in_header') == 'yes') { //rather have No
+            if (get_option('post_notification_unsubscribe_link_in_header') === 'yes') { //rather have No
                 $unsubscribe_link_in_headerY = $selected;
             } else {
                 $unsubscribe_link_in_headerN = $selected;
@@ -804,7 +804,7 @@ function post_notification_admin_sub()
 		</td>
 	</tr>
 	<tr class="pn_row">
-		<td />
+		<td></td>
 		<td class="pn_td">
 			<?php _e('The Stings @@post_notification_header and @@post_notification_body will be replaced in your post.', 'post_notification'); ?><br />
 			<?php _e('Also see the Instructions for this.', 'post_notification'); ?>
@@ -820,7 +820,7 @@ function post_notification_admin_sub()
 
 
 	<tr class="pn_row">
-		<td />
+		<td></td>
 		<td class="pn_td">
 			<?php _e('Adds a Post Notification page to your pages.', 'post_notification') . ' ';
     _e('The file "post_notification_template.php" has been copied into the active theme. You may want to edit this file to fit your needs.  ', 'post_notification'); ?><br />
@@ -836,7 +836,7 @@ function post_notification_admin_sub()
 		<td class="pn_td"><input name="pn_url" type="text" id="pn_url" size="60" value="<?php  echo get_option('post_notification_url'); ?>" /></td>
 	</tr>
 	<tr class="pn_row">
-		<td />
+		<td></td>
 		<td class="pn_td">
 			<?php 	_e('This must be the URL or the ID of the page on which you subscribe.', 'post_notification') . ' ';
     _e('If you pick "Add Post Notification page" this will be compleated automaticly.', 'post_notification') . ' ';
@@ -860,7 +860,7 @@ function post_notification_admin_sub()
                 <td class="pn_td"><input name="unsubscribe_email" type="text" id="pn_url" size="60" value="<?php echo get_option('post_notification_unsubscribe_email'); ?>" /></td>
             </tr>
             <tr class="pn_row">
-                <td />
+                <td></td>
                 </tr>
 
 
@@ -873,7 +873,7 @@ function post_notification_admin_sub()
 	<tr class="pn_row">
 		<th class="pn_th_caption"><?php _e('Debug:', 'post_notification') ?></th>
 		<?php
-            if (get_option('post_notification_debug') != 'yes') {
+            if (get_option('post_notification_debug') !== 'yes') {
                 $debugN = $selected;
             } else {
                 $debugY = $selected;

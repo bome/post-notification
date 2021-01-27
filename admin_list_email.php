@@ -34,7 +34,7 @@ function post_notification_admin_sub() {
     $t_cats = $wpdb->prefix . 'post_notification_cats';
 
     $action = filter_input(INPUT_GET, 'action', FILTER_SANITIZE_SPECIAL_CHARS);
-    if ($action == 'remove_email') {
+    if ($action === 'remove_email') {
         $remove = true;
     } else {
         $remove = false;
@@ -49,7 +49,7 @@ function post_notification_admin_sub() {
         } else {
             $removeEmail = filter_input(INPUT_POST, 'removeEmail', FILTER_DEFAULT, FILTER_REQUIRE_ARRAY);
             echo __('The following addresses were deleted:', 'post_notification') . '<br /><br />';
-            
+
 
             foreach ($removeEmail as $removeAddress) {
                 //Multiple table delete only works with mysql 4.0 or 4.1
@@ -90,7 +90,7 @@ function post_notification_admin_sub() {
         }
 
         $start = filter_input(INPUT_POST, 'start', FILTER_SANITIZE_SPECIAL_CHARS);
-        if ($start !== false OR $start !== null) {
+        if ($start !== false || $start !== null) {
             //$start = $_POST['start'];
         } else {
             $start = '';
@@ -145,14 +145,14 @@ function post_notification_admin_sub() {
         echo __('Start at:', 'post_notification') . ' <input name="start" type="text" size="4" value="' . $start . '" />  ';
 
         echo __('Sort by:', 'post_notification') . ' <select name="sortby"  size = "1" > ' .
-        '<option value="id" ' . (($sortby == 'id') ? 'selected="selected"' : '') . '>' . __('ID', 'post_notification') . '</option>' .
-        '<option value="email_addr" ' . (($sortby == 'email_addr') ? 'selected="selected"' : '') . '>' . __('Address', 'post_notification') . '</option>' .
-        '<option value="date_subscribed" ' . (($sortby == 'date_subscribed') ? 'selected="selected"' : '') . '>' . __('Date accepted', 'post_notification') . '</option>' .
-        '<option value="subscribe_ip" ' . (($sortby == 'subscribe_ip') ? 'selected="selected"' : '') . '>' . __('IP', 'post_notification') . '</option>' .
+        '<option value="id" ' . (($sortby === 'id') ? 'selected="selected"' : '') . '>' . __('ID', 'post_notification') . '</option>' .
+        '<option value="email_addr" ' . (($sortby === 'email_addr') ? 'selected="selected"' : '') . '>' . __('Address', 'post_notification') . '</option>' .
+        '<option value="date_subscribed" ' . (($sortby === 'date_subscribed') ? 'selected="selected"' : '') . '>' . __('Date accepted', 'post_notification') . '</option>' .
+        '<option value="subscribe_ip" ' . (($sortby === 'subscribe_ip') ? 'selected="selected"' : '') . '>' . __('IP', 'post_notification') . '</option>' .
         '</select>';
         echo ' <select name="sortorder"  size = "1" > ' .
-        '<option value="ASC" ' . (($sortorder == 'ASC') ? 'selected="selected"' : '') . '>' . __('Ascending', 'post_notification') . '</option>' .
-        '<option value="DESC" ' . (($sortorder == 'DESC') ? 'selected="selected"' : '') . '>' . __('Descending', 'post_notification') . '</option>' .
+        '<option value="ASC" ' . (($sortorder === 'ASC') ? 'selected="selected"' : '') . '>' . __('Ascending', 'post_notification') . '</option>' .
+        '<option value="DESC" ' . (($sortorder === 'DESC') ? 'selected="selected"' : '') . '>' . __('Descending', 'post_notification') . '</option>' .
         '</select>';
 
         echo '<BR  /> ';
@@ -209,16 +209,18 @@ function post_notification_admin_sub() {
         );
         echo '</p>';
         if (!$show_list) {
-            echo '<table><tr>';
+            echo '<table class="post_notification_admin_table"><tr>';
             if ($remove) {
-                echo '<td width="20"><b>&nbsp;</b></td>';
+                echo '<th class="pn_remove"><b>&nbsp;</b></th>';
             }
 
-            echo '<td width="200"><b>' . __('Address', 'post_notification') . '</b></td>
-				<td width="125"><b>' . __('Accepted', 'post_notification') . '</b></td>
-				<td width="255"><b>' . __('Date accepted', 'post_notification') . '</b></td>
-				<td><b>' . __('Subscribed categories', 'post_notification') . '</b></td>
-				<td><b>' . __('IP', 'post_notification') . '</b></td>
+            echo '<th class="pn_mail_address">' . __('Address', 'post_notification') . '</th>
+                <th class="pn_user_link">' . __('User', 'user') . '</th>
+                <th class="pn_subscribed_cats">' . __('Subscribed categories', 'post_notification') . '</th>
+				<th class="pn_accepted"><b>' . __('Accepted', 'post_notification') . '</th>
+				<th class="pn_date_accepted"><b>' . __('Date accepted', 'post_notification') . '</th>
+				<th class="pn_ip">' . __('IP', 'post_notification') . '</th>
+				
 				</tr>';
         } else {
             echo '<br /><br />';
@@ -227,7 +229,8 @@ function post_notification_admin_sub() {
         foreach ($emails as $email) {
             $email_addr = $email->email_addr;
             $gets_mail = $email->gets_mail;
-            $last_modified = $email->last_modified;
+            $wp_user_account = pn_get_wp_user_link($email_addr);
+//          $last_modified = $email->last_modified;
             $datestr = get_option('date_format') . ' ' . get_option('time_format');
             $date_subscribed = post_notification_date_i18n_tz($datestr, post_notification_mysql2gmdate($email->date_subscribed));
             $id = $email->id;
@@ -269,13 +272,15 @@ function post_notification_admin_sub() {
             if (!$show_list) {
                 echo "<tr>";
                 if ($remove) {
-                    echo "<td><input type=\"checkbox\" name=\"removeEmail[]\" value=\"$email_addr\" /></td>";
+                    echo "<td class=\"pn_remove\"><input type=\"checkbox\" name=\"removeEmail[]\" value=\"$email_addr\" /></td>";
                 }
-                echo "<td><a href=\"$modlink\" target=\"_blank\">$email_addr<a></td>";
-                echo "<td>$gets_mail</td>";
-                echo "<td>$date_subscribed</td>";
-                echo "<td>$catnames</td>";
-                echo "<td>$ip</td>";
+                echo "<td class=\"pn_mail_address\"><a href=\"$modlink\" target=\"_blank\">$email_addr<a></td>";
+                echo "<td class=\"pn_user_link\">$wp_user_account</td>";
+                echo "<td class=\"pn_subscribed_cats\">$catnames</td>";
+                echo "<td class=\"pn_accepted\">$gets_mail</td>";
+                echo "<td class=\"pn_date_accepted\">$date_subscribed</td>";
+                echo "<td class=\"pn_ip\">$ip</td>";
+
                 echo "</tr>";
             } else {
                 echo $email_addr . '<br/>';

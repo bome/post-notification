@@ -70,8 +70,7 @@ function post_notification_admin_sub()
             // Set Variables //
             $gets_mail = 1;
             $now = post_notification_date2mysql();
-            ;
-            
+
             // Basic checking
             if (!is_email($addr)) {
                 if (!$addr == "") {
@@ -85,7 +84,7 @@ function post_notification_admin_sub()
             
             $mid = $wpdb->get_var("SELECT id FROM $t_emails WHERE email_addr = '$addr'");
             
-            if ($_POST['logic'] == 'del') {
+            if ($_POST['logic'] === 'del') {
                 if ($mid != '') {
                     $wpdb->query("DELETE FROM $t_emails WHERE id = $mid");
                     $wpdb->query("DELETE FROM $t_cats WHERE id = $mid");
@@ -117,7 +116,7 @@ function post_notification_admin_sub()
             
 
             
-            if ($_POST['logic'] == 'repl') {
+            if ($_POST['logic'] === 'repl') {
                 $wpdb->query("DELETE FROM $t_cats WHERE id = $mid");
             }
             
@@ -131,7 +130,7 @@ function post_notification_admin_sub()
             //Let's see what cats we have
             foreach ($pn_cats as $cat) {
                 if (is_numeric($cat)) { //Security
-                    if ($_POST['logic'] == 'rem') {
+                    if ($_POST['logic'] === 'rem') {
                         $wpdb->query("DELETE FROM $t_cats WHERE id = $mid AND cat_id = $cat");
                     } else {
                         if (!$wpdb->get_var("SELECT id FROM $t_cats WHERE id = $mid AND cat_id = $cat")) {

@@ -354,7 +354,7 @@ function post_notification_get_catselect($all_str = '', $subcats = array())
     if ($all_str == '') {
         $all_str = __('All', 'post_notification');
     }
-    if (get_option('post_notification_empty_cats') == 'yes') {
+    if (get_option('post_notification_empty_cats') === 'yes') {
         $cats = get_categories(array('hide_empty' => false));
     } else {
         $cats = get_categories();
@@ -498,3 +498,11 @@ if ( ! function_exists( 'is_woocommerce_activated' ) ) {
     }
 }
 
+// generates link with ID of user account
+function pn_get_wp_user_link($email) {
+    $user =  get_user_by('email', $email);
+    if (!empty($user)) {
+        return '<a href="/wp-admin/user-edit.php?user_id=' . $user->ID. '">' . $user->nickname . '</a>';
+    }
+    return "";
+}
