@@ -229,9 +229,9 @@ function post_notification_sendmail($maildata, $addr, $code = '', $send = true)
       $maildata['header'] = post_notification_add_additional_headers($addr, $maildata);  
     } 
 
-    if ($send) { //for debugging
-        // Use woocommerce mailer if installed and activated woocommerce available (todo: make option in admin backend)
-        if (is_woocommerce_activated()) {
+    if ($send) {
+        // Use woocommerce mailer if installed and activated in PN Settings
+        if ((is_woocommerce_activated()) AND (get_option('post_notification_use_wc_mailer') === 'yes')) {
             global $woocommerce;
 
             // wrap in WC email

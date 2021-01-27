@@ -115,6 +115,8 @@ function post_notification_admin_sub()
         update_option('post_notification_honeypot', $_POST['honeypot']);
         update_option('post_notification_unsubscribe_email', $_POST['unsubscribe_email']);
         update_option('post_notification_unsubscribe_link_in_header', $_POST['unsubscribe_link_in_header']);
+        update_option('post_notification_use_wc_mailer', $_POST['use_wc_mailer']);
+
 
         $p_captcha = $_POST['captcha'];
         if (is_numeric($p_captcha)) {
@@ -363,7 +365,7 @@ function post_notification_admin_sub()
     $template = get_option('post_notification_template');
     $dir_handle=opendir(post_notification_get_profile_dir($profile));
     while (false !== ($file = readdir($dir_handle))) {
-        if (substr($file, -5) === '.html' or substr($file, -4) == '.txt') {
+        if (substr($file, -5) === '.html' || substr($file, -4) === '.txt') {
             $en_templates .= "<option value=\"$file\" ";
             if ($file == $template) {
                 $en_templates .= ' selected="selected"';
@@ -692,8 +694,47 @@ function post_notification_admin_sub()
             </select>
         </td>
     </tr>
-    
+    <?php
+    // added setting for header setting
+    if (get_option('post_notification_unsubscribe_link_in_header') === 'yes') { //rather have No
+        $unsubscribe_link_in_headerY = $selected;
+    } else {
+        $unsubscribe_link_in_headerN = $selected;
+    }
 
+    ?>
+
+    <tr class="pn_row">
+        <th class="pn_th_caption"><?php _e('Insert unsubscribe headers:', 'post_notification'); ?></th>
+        <td class="pn_td">
+            <select name="unsubscribe_link_in_header" >
+                <option value="no"  <?php echo $unsubscribe_link_in_headerN; ?>><?php _e('No', 'post_notification'); ?></option>
+                <option value="yes" <?php echo $unsubscribe_link_in_headerY; ?>><?php _e('Yes', 'post_notification'); ?></option>
+            </select>
+        </td>
+    </tr>
+
+    <tr class="pn_row">
+        <th class="pn_th_caption"><?php _e('Email used for unsubscribe header:', 'post_notification'); ?></th>
+        <td class="pn_td"><input name="unsubscribe_email" type="text" id="pn_url" size="60" value="<?php echo get_option('post_notification_unsubscribe_email'); ?>" /></td>
+    </tr>
+    <?php if (is_woocommerce_activated()) {
+        if (get_option('post_notification_use_wc_mailer') === 'yes') { //rather have No
+        $use_wc_mailerY = $selected;
+        } else {
+        $use_wc_mailerN = $selected;
+        }
+        ?>
+    <tr class="pn_row">
+        <th class="pn_th_caption"><?php _e('Use woocommerce mailer (with WC template):', 'post_notification'); ?></th>
+        <td class="pn_td">
+            <select name="use_wc_mailer" >
+                <option value="no"  <?php echo $use_wc_mailerN; ?>><?php _e('No', 'post_notification'); ?></option>
+                <option value="yes" <?php echo $use_wc_mailerY; ?>><?php _e('Yes', 'post_notification'); ?></option>
+            </select>
+        </td>
+    </tr>
+    <?php } ?>
 </table>
 
 
@@ -762,16 +803,6 @@ function post_notification_admin_sub()
             } else {
                 $honeypotN = $selected;
             }
-            
-            // added setting for header setting
-            
-            if (get_option('post_notification_unsubscribe_link_in_header') === 'yes') { //rather have No
-                $unsubscribe_link_in_headerY = $selected;
-            } else {
-                $unsubscribe_link_in_headerN = $selected;
-            }
-            
-            
             ?>
             <tr class="pn_row">
                 <th class="pn_th_caption"><?php echo "Use Honeypot (hidden field in subscribtion form?"; ?></th>
@@ -844,21 +875,7 @@ function post_notification_admin_sub()
 		</td>
         </tr>
 
-            
-            <tr class="pn_row">
-                <th class="pn_th_caption"><?php _e('Insert unsubscribe headers:', 'post_notification'); ?></th>
-                <td class="pn_td">
-                    <select name="unsubscribe_link_in_header" >
-                        <option value="no"  <?php echo $unsubscribe_link_in_headerN; ?>><?php _e('No', 'post_notification'); ?></option>
-                        <option value="yes" <?php echo $unsubscribe_link_in_headerY; ?>><?php _e('Yes', 'post_notification'); ?></option>
-                    </select>
-                </td>
-            </tr>
-            
-            <tr class="pn_row">
-                <th class="pn_th_caption"><?php _e('Email used for unsubscribe header:', 'post_notification'); ?></th>
-                <td class="pn_td"><input name="unsubscribe_email" type="text" id="pn_url" size="60" value="<?php echo get_option('post_notification_unsubscribe_email'); ?>" /></td>
-            </tr>
+
             <tr class="pn_row">
                 <td></td>
                 </tr>

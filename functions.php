@@ -493,7 +493,6 @@ function post_notification_enqueue_cats_js () {
 if ( ! function_exists( 'is_woocommerce_activated' ) ) {
 	function is_woocommerce_activated() {
 		if ( class_exists( 'woocommerce' ) ) { return true; }
-
         return false;
     }
 }
