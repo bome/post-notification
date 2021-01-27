@@ -1,0 +1,43 @@
+.post_notification_admin_table {
+  width: 100%; }
+  .post_notification_admin_table tr {
+    margin: 7px;
+    background: #cccccc; }
+  .post_notification_admin_table tr:nth-child(odd) {
+    background: #bbbbbb; }
+  .post_notification_admin_table .pn_th_caption {
+    text-align: right;
+    width: 25%;
+    min-width: 100px;
+    padding: 5px; }
+  .post_notification_admin_table .pn_th_caption_warning {
+    width: 100%;
+    text-align: center;
+    color: darkred; }
+  .post_notification_admin_table .pn_td {
+    width: 75%;
+    padding: 5px; }
+
+#pn_admin_menu {
+  /* Change the link color to #111 (black) on hover */ }
+  #pn_admin_menu ul {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background-color: #bbbbbb; }
+  #pn_admin_menu li {
+    float: left; }
+  #pn_admin_menu li a {
+    display: block;
+    color: black;
+    text-align: center;
+    padding-top: 8px;
+    padding-right: 8px;
+    padding-left: 8px;
+    padding-bottom: 4px;
+    text-decoration: none; }
+  #pn_admin_menu li a:hover {
+    background-color: #cccccc; }
+
+/*# sourceMappingURL=postnotification_admin.css.map */

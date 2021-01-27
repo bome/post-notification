@@ -58,9 +58,9 @@ function post_notification_date2mysql($unixtimestamp = 0)
 {
     if ($unixtimestamp == 0) {
         return gmdate('Y-m-d H:i:s');
-    } else {
-        return gmdate('Y-m-d H:i:s', $unixtimestamp);
     }
+
+    return gmdate('Y-m-d H:i:s', $unixtimestamp);
 }
 
 
@@ -84,14 +84,14 @@ function post_notification_sql_posts_to_send($future = false)
                 "p.id = el.post_id AND " .
                 "p.post_status IN('publish', 'static' , 'private') ".
                 "$add_where)";
-    } else {
-        return " FROM $wpdb->posts p, $t_posts el " .
-            "WHERE( ".
-            "el.notification_sent >= 0 AND " .
-            "p.id = el.post_id AND " .
-            "p.post_status IN('publish', 'private', 'future') ".
-            "$add_where)";
     }
+
+    return " FROM $wpdb->posts p, $t_posts el " .
+        "WHERE( ".
+        "el.notification_sent >= 0 AND " .
+        "p.id = el.post_id AND " .
+        "p.post_status IN('publish', 'private', 'future') ".
+        "$add_where)";
 }
 
 /// returns a link to the Post Notification Page.
@@ -134,7 +134,7 @@ function post_notification_encode($in_str, $charset)
     //get line break
     //See RFC 2047
 
-    if (get_option('post_notification_hdr_nl') == 'rn') {
+    if (get_option('post_notification_hdr_nl') === 'rn') {
         $hdr_nl = "\r\n";
     } else {
         $hdr_nl = "\n";
@@ -151,23 +151,25 @@ function post_notification_encode($in_str, $charset)
     $enc_len = strlen($start) + 2; //2 = end
     $lastbreak = 0;
     $code = '';
-    for ($i=0; $i < strlen($in_str); $i++) {
+    $out_str ='';
+
+    for ($i=0, $iMax = strlen($in_str); $i < $iMax; $i++) {
         if (function_exists('mb_check_encoding')) {
             $isascii =mb_check_encoding($in_str[$i], 'ASCII');
         } else {
-            $isascii = (mb_detect_encoding($in_str[$i], 'UTF-8, ISO-8859-1, ASCII') == 'ASCII');
+            $isascii = (mb_detect_encoding($in_str[$i], 'UTF-8, ISO-8859-1, ASCII') === 'ASCII');
         }
 
         //some adjustments
-        if (strlen($code) > 0) {
-            if ($in_str[$i] == ' ' || $in_str[$i] == "\t") {
+        if ($code !== '') {
+            if ($in_str[$i] === ' ' || $in_str[$i] === "\t") {
                 $isascii = false;
             }
         }
 
         //linebreaking
         $this_line_len = strlen($out_str) + strlen($code) + $enc_len - $lastbreak; //$enc_len is needed in case a non-ascii is added
-        if ($this_line_len > 65 && ($in_str[$i] == ' ' || $in_str[$i] == "\t")) {
+        if ($this_line_len > 65 && ($in_str[$i] === ' ' || $in_str[$i] === "\t")) {
             if ($code != '') { //Get rid of $code
                 $out_str .= $start . base64_encode($code) . $end;
             }
@@ -226,7 +228,7 @@ function post_notification_header($html = false) {
 /// Install a theme
 function post_notification_installtheme()
 {
-    if (get_option('post_notification_filter_include') == 'no') {
+    if (get_option('post_notification_filter_include') === 'no') {
         $src  = POST_NOTIFICATION_PATH . 'post_notification_template.php';
         $dest = ABSPATH . 'wp-content/themes/' . get_option('template') . '/post_notification_template.php';
         if (!@file_exists($dest)) {
@@ -264,7 +266,7 @@ function post_notification_set_next_send()
  * Create a link to the subscription page.
  * @param addr The adress, which is to be used
  * @param code The Code, if available. If not it will be retrieved from the db.
- * @return the Adress.
+ * @return string|the
  */
 
 function post_notification_get_mailurl($addr, $code = '') {
@@ -364,7 +366,7 @@ function post_notification_get_catselect($all_str = '', $subcats = array())
         $cats_str .= ' checked="checked"';
     }
     $cats_str .= '>' . $all_str .'</li>';
-    $cats_str .= '<ul class="children">' . call_user_func_array(array(&$walker, 'walk'), array($cats, 0, $walkparam)) . '</ul>';
+    $cats_str .= '<ul class="children">' . $walker->walk($cats, 0, $walkparam) . '</ul>';
     $cats_str .= '</ul>';
     $cats_str .= '<script type="text/javascript"><!--' . "\n  post_notification_cats_init();\n //--></script>";
     return $cats_str;
@@ -374,7 +376,6 @@ function post_notification_get_addr()
 {
     $commenter = wp_get_current_commenter();
     $addr = $commenter['comment_author_email'];
-
 
     if ($addr == '') { //still havn't got email
         $user = wp_get_current_user();
@@ -417,40 +418,41 @@ function post_notification_date_i18n_tz($dateformatstring, $unixtimestamp)
         $dateformatstring = preg_replace("/([^\\\])A/", "\\1".backslashit($datemeridiem_capital), $dateformatstring);
         $dateformatstring = substr($dateformatstring, 1);
     }
-    $j = @gmdate($dateformatstring, $i);
-    return $j;
+    return @gmdate($dateformatstring, $i);
 }
 
-function post_notification_get_code($addr, $code = '') {
+function post_notification_get_code($addr, $code = '')
+{
     global $wpdb;
     if (strlen($code) != 32) {
         $t_emails = $wpdb->prefix . 'post_notification_emails';
-        $query = $wpdb->get_results("SELECT id, act_code FROM $t_emails WHERE email_addr = '" . $wpdb->escape($addr) . "'");
+        $query = $wpdb->get_results("SELECT id, act_code FROM $t_emails WHERE email_addr = '" . $addr . "'");
         $query = $query[0];
 
         //Get Activation Code
         if (($query->id == '') || (strlen($query->act_code) != 32)) { //Reuse the code
-            mt_srand((double) microtime() * 1000000);
+            mt_srand((double)microtime() * 1000000);
             $code = md5(mt_rand(100000, 99999999) . time());
             if ($query->id == '') {
                 $ip = sprintf('%u', ip2long($_SERVER['REMOTE_ADDR']));
-                if ($ip < 0 || $ip===false) {
+                if ($ip < 0 || $ip === false) {
                     $ip = 0;
                 } //This has changed with php 5
                 $wpdb->query(
-                    "INSERT INTO $t_emails (email_addr,date_subscribed, act_code, subscribe_ip) ".
-                    "VALUES ('" . $wpdb->escape($addr) . "','" . post_notification_date2mysql() ."', '$code', $ip  )"
+                    "INSERT INTO $t_emails (email_addr,date_subscribed, act_code, subscribe_ip) " .
+                    "VALUES ('" . $addr . "','" . post_notification_date2mysql() . "', '$code', $ip  )"
                 );
             } else {
                 $wpdb->query(
-                    "UPDATE $t_emails SET act_code = '$code' WHERE email_addr = '" . $wpdb->escape($addr) . "'"
+                    "UPDATE $t_emails SET act_code = '$code' WHERE email_addr = '" . $addr . "'"
                 );
             }
         } else {
             $code = $query->act_code;
         }
-        return $code;
     }
+    return $code;
+
 }
 
 function post_notification_get_list_name() {
@@ -460,28 +462,28 @@ function post_notification_get_list_name() {
     $urlparts = parse_url(site_url());
     $domain = $urlparts ['host'];
     
-    if (!isset($page_name) OR strlen($page_name) < 3) {
+    if (!isset($page_name) || strlen($page_name) < 3) {
         return "default.".$domain;
-    } else {
-        // Strip HTML Tags
-        $clear = strip_tags($page_name);
-// Clean up things like &amp;
-        $clear = html_entity_decode($clear);
-// Strip out any url-encoded stuff
-        $clear = urldecode($clear);
-// Replace non-AlNum characters with space
-        $clear = preg_replace('/[^A-Za-z0-9]/', '', $clear);
-// Replace Multiple spaces with single space
-        $clear = preg_replace('/ +/', ' ', $clear);
-// Trim the string of leading/trailing space
-        $clear = trim($clear);
-        // lower and cut after 10 characters
-        $listname = substr(strtolower($clear), 0, 10);
-        return $listname.".".$domain;
     }
+
+// Strip HTML Tags
+    $clear = strip_tags($page_name);
+// Clean up things like &amp;
+    $clear = html_entity_decode($clear);
+// Strip out any url-encoded stuff
+    $clear = urldecode($clear);
+// Replace non-AlNum characters with space
+    $clear = preg_replace('/[^A-Za-z0-9]/', '', $clear);
+// Replace Multiple spaces with single space
+    $clear = preg_replace('/ +/', ' ', $clear);
+// Trim the string of leading/trailing space
+    $clear = trim($clear);
+    // lower and cut after 10 characters
+    $listname = substr(strtolower($clear), 0, 10);
+    return $listname.".".$domain;
 }
 
-function pncats () {
+function post_notification_enqueue_cats_js () {
     wp_enqueue_script('custom-js', POST_NOTIFICATION_PATH_URL . 'pncats.js', array('jquery'), false, false);
 }
 
@@ -490,7 +492,9 @@ function pncats () {
  */
 if ( ! function_exists( 'is_woocommerce_activated' ) ) {
 	function is_woocommerce_activated() {
-		if ( class_exists( 'woocommerce' ) ) { return true; } else { return false; }
-	}
+		if ( class_exists( 'woocommerce' ) ) { return true; }
+
+        return false;
+    }
 }
 

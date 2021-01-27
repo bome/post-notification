@@ -7,7 +7,7 @@
 # Wordpress. Please see the readme.txt for details.
 #------------------------------------------------------
 
-//install stuf
+//install stuff
 function post_notification_install()
 {
     global $wpdb;
@@ -75,16 +75,16 @@ function post_notification_install()
     }
     
     
-    //This actually belongs into the create statement but it's easyer to maintain this way
+    //This actually belongs into the create statement but it's easier to maintain this way
     $index = array();
     $indexlist = $wpdb->get_results("SHOW INDEX FROM $t_cats");
     foreach ($indexlist as $indexrow) {
         $index[] = $indexrow->Column_name;
     }
-    if (!in_array('id', $index)) {
+    if (!in_array('id', $index, true)) {
         $wpdb->query(" ALTER TABLE $t_cats ADD INDEX ( id )");
     }
-    if (!in_array('cat_id', $index)) {
+    if (!in_array('cat_id', $index, true)) {
         $wpdb->query(" ALTER TABLE $t_cats ADD INDEX ( cat_id )");
     }
 
@@ -94,10 +94,10 @@ function post_notification_install()
     foreach ($indexlist as $indexrow) {
         $index[] = $indexrow->Column_name;
     }
-    if (!in_array('gets_mail', $index)) {
+    if (!in_array('gets_mail', $index, true)) {
         $wpdb->query(" ALTER TABLE $t_emails ADD INDEX ( id , gets_mail )");
     }
-    if (!in_array('email_addr', $index)) {
+    if (!in_array('email_addr', $index, true)) {
         $wpdb->query(" ALTER TABLE $t_emails ADD INDEX ( email_addr )");
     }
 
@@ -106,7 +106,7 @@ function post_notification_install()
     foreach ($indexlist as $indexrow) {
         $index[] = $indexrow->Column_name;
     }
-    if (!in_array('notification_sent', $index)) {
+    if (!in_array('notification_sent', $index, true)) {
         $wpdb->query(" ALTER TABLE $t_posts ADD INDEX ( notification_sent )");
     }
     
@@ -123,7 +123,7 @@ function post_notification_install()
     add_option('post_notification_send_private', 'no', 'Whether to send private posts', 'no');
     add_option('post_notification_send_page', 'no', 'Whether to send private posts', 'no');
     add_option('post_notification_hdr_nl', "n", 'What kind of header', 'no');
-    add_option('post_notification_from_email', get_option('admin_email'), 'The adress used as sender', 'no');
+    add_option('post_notification_from_email', get_option('admin_email'), 'The address used as sender', 'no');
     add_option('post_notification_from_name', '@@blogname', 'The name used as sender', 'no');
     add_option('post_notification_subject', '@@blogname: @@title', 'The subject of the mail', 'no');
     add_option('post_notification_url', '', 'The URl to the main page', 'no');
@@ -137,7 +137,7 @@ function post_notification_install()
     add_option('post_notification_page_meta', 'no', 'Whether to add a link to Meta', 'yes');
     //autoload is set to yes, because meta might need it.
     add_option('post_notification_page_name', __('Subscribe to Posts', 'post_notification'), 'Name of the Post Notification page.', 'yes');
-    add_option('post_notification_uninstall', 'no', 'Uninstall on deaktivation', 'no');
+    add_option('post_notification_uninstall', 'no', 'Uninstall on deactivation', 'no');
     add_option('post_notification_captcha', '0', 'Number of captcha-cahars', 'no');
     add_option('post_notification_lock', 'file', 'Lockingtype', 'yes');
     add_option('post_notification_filter_include', 'yes', 'Include PN via filters', 'yes');
@@ -146,7 +146,7 @@ function post_notification_install()
     add_option('post_notification_the_content_exclude', serialize(array()), 'Include PN via filters', 'no');
     add_option('post_notification_empty_cats', 'no', 'Whether to show empty cats', 'no');
     add_option('post_notification_show_cats', 'yes', 'Whether to show cats', 'no');
-    add_option('post_notification_subscribers', '0', 'Number of Subscibers', 'yes');
+    add_option('post_notification_subscribers', '0', 'Number of Subscribers', 'yes');
     add_option('post_notification_auto_subscribe', 'yes', 'Auto Subscribe when regist new user', 'no');
     
     if (is_dir(POST_NOTIFICATION_PATH . WPLANG)) {
@@ -165,9 +165,9 @@ function post_notification_uninstall()
     $t_posts = $wpdb->prefix . 'post_notification_posts';
     $t_cats = $wpdb->prefix . 'post_notification_cats';
     
-    if (get_option('post_notification_uninstall') != 'yes') {
+    if (get_option('post_notification_uninstall') !== 'yes') {
         return;
-    } //We do not want to delte anything.
+    } //We do not want to delete anything.
     
     //
     $wpdb->query("DROP TABLE $t_emails");

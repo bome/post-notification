@@ -1,7 +1,7 @@
 var post_notification_running = false;
-var post_notification_box = new Array();
+var post_notification_box = [];
 
-function post_notification_cats_init(){
+post_notification_cats_init = function (){
     var boxes =  document.getElementsByTagName("input");
     var tocheck = "";
     var i;
@@ -47,7 +47,7 @@ function post_notification_cats_init(){
 }
 
 
-function post_notification_cats_change(){
+post_notification_cats_change = function (){
 
 }
 

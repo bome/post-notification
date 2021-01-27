@@ -66,7 +66,8 @@ function post_notification_febody()
     return $content['body'];
 }
 // add js for categories
-add_action('wp_enqueue_scripts', 'pncats');
+add_action('wp_enqueue_scripts', 'post_notification_enqueue_cats_js');
+add_action('admin_enqueue_scripts', 'post_notification_enqueue_cats_js');
 
 // add css
 function postnotification_css() {
@@ -74,6 +75,14 @@ function postnotification_css() {
 }
 
 add_action('wp_enqueue_scripts', 'postnotification_css');
+
+// add css to admin backend
+function post_notification_admin_css()
+{
+    wp_enqueue_style('postnotification_admin_css', POST_NOTIFICATION_PATH_URL . '/css/postnotification_admin.css');
+}
+
+add_action('admin_enqueue_scripts', 'post_notification_admin_css');
 
 /// Add the Admin panel
 function post_notification_admin_adder()
