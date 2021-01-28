@@ -211,7 +211,7 @@ function post_notification_header($html = false) {
         
     $header = Array();
  
-    $header['MIME-Version'] = "MIME-Version: 1.0";
+    //$header['MIME-Version'] = "MIME-Version: 1.0";
     $header['From'] = "From: ".$from_name." <".$from_email.">";
     $header['Reply-To'] = "Reply-To: ".$from_email;
     $header['Return-Path'] = "Return-Path: ".$from_email;

@@ -480,6 +480,25 @@ function post_notification_admin_sub()
 	        </select>
 		</td>
 	</tr>
+
+    <?php if (is_woocommerce_activated()) {
+        if (get_option('post_notification_use_wc_mailer') === 'yes') { //rather have No
+            $use_wc_mailerY = $selected;
+        } else {
+            $use_wc_mailerN = $selected;
+        }
+        ?>
+        <tr class="pn_row">
+            <th class="pn_th_caption"><?php _e('Use woocommerce mailer (with WC template):', 'post_notification'); ?></th>
+            <td class="pn_td">
+                <select name="use_wc_mailer" >
+                    <option value="no"  <?php echo $use_wc_mailerN; ?>><?php _e('No', 'post_notification'); ?></option>
+                    <option value="yes" <?php echo $use_wc_mailerY; ?>><?php _e('Yes', 'post_notification'); ?></option>
+                </select>
+            </td>
+        </tr>
+    <?php } ?>
+
 	<tr class="pn_row">
 		<td></td>
 		<td class="pn_td">
@@ -718,23 +737,6 @@ function post_notification_admin_sub()
         <th class="pn_th_caption"><?php _e('Email used for unsubscribe header:', 'post_notification'); ?></th>
         <td class="pn_td"><input name="unsubscribe_email" type="text" id="pn_url" size="60" value="<?php echo get_option('post_notification_unsubscribe_email'); ?>" /></td>
     </tr>
-    <?php if (is_woocommerce_activated()) {
-        if (get_option('post_notification_use_wc_mailer') === 'yes') { //rather have No
-        $use_wc_mailerY = $selected;
-        } else {
-        $use_wc_mailerN = $selected;
-        }
-        ?>
-    <tr class="pn_row">
-        <th class="pn_th_caption"><?php _e('Use woocommerce mailer (with WC template):', 'post_notification'); ?></th>
-        <td class="pn_td">
-            <select name="use_wc_mailer" >
-                <option value="no"  <?php echo $use_wc_mailerN; ?>><?php _e('No', 'post_notification'); ?></option>
-                <option value="yes" <?php echo $use_wc_mailerY; ?>><?php _e('Yes', 'post_notification'); ?></option>
-            </select>
-        </td>
-    </tr>
-    <?php } ?>
 </table>
 
 
