@@ -96,7 +96,7 @@ function post_notification_admin_sub() {
 				if ( $mid != '' ) {
 					$wpdb->query( "DELETE FROM $t_emails WHERE id = $mid" );
 					$wpdb->query( "DELETE FROM $t_cats WHERE id = $mid" );
-					echo "<div>" . __( 'Removed email:', 'post_notification' ) . " $email_addr</div>";
+					echo "<div>" . __( 'Removed email:', 'post_notification' ) . " $addr</div>";
 				} else {
 					echo '<div class="error">' . __( 'Email is not in DB:', 'post_notification' ) . " $addr</div>";
 				}
