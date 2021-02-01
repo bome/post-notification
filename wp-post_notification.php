@@ -8,18 +8,17 @@
 #------------------------------------------------------
 
 
-
 //********************************************************//
 //                      START UP
 //********************************************************//
 
-define('WP_USE_THEMES', false);
-require_once('./wp-blog-header.php');
+define( 'WP_USE_THEMES', false );
+require_once( './wp-blog-header.php' );
 
 get_header();
 echo '<div id="content" class="narrowcolumn"><div class="post">';
 
-require_once(POST_NOTIFICATION_PATH  . 'frontend.php'); //load FE
+require_once( POST_NOTIFICATION_PATH . 'frontend.php' ); //load FE
 post_notification_fe(); //run FE
 
 //********************************************************//

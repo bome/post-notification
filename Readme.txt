@@ -1,4 +1,11 @@
 === Post Notification ===
+Contributors: bome, knandi76
+GitHub: https://github.com/bome/post-notification
+Website: https://bome.com
+Tested up to Wordpress: 5.6
+Tested under PHP: 8.0
+
+=== Post Notification ===
 Contributors: morty
 Website: http://pn.xn--strbe-mva.de
 Tags: notification, email, mail, post, subscribe, subscribe2, german, deutsch, french, dutch, hebrew

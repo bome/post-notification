@@ -1,28 +1,30 @@
 // minimal editing for postnotification
-.postnotification_cats { 
-    li {
-        margin: 0;
-        margin-top: 0.6em;
-        padding-left: 0!important;
-        list-style: none;
-        &:before {
-            content: ""!important;
-            width: 0!important;
-            display: none!important;
-        }
+.postnotification_cats {
+  li {
+    margin: 0;
+    margin-top: 0.6em;
+    padding-left: 0 !important;
+    list-style: none;
 
-        .pn_checkbox {
-            margin: 0;
-            padding: 0;
-            margin-right: 0.8em!important;
-        }
+    &:before {
+      content: "" !important;
+      width: 0 !important;
+      display: none !important;
     }
+
+    .pn_checkbox {
+      margin: 0;
+      padding: 0;
+      margin-right: 0.8em !important;
+    }
+  }
 
 }
+
 p.pn-subscribe-radios {
-    input[type="radio"] {
-        margin: 0;
-        padding: 0;
-        margin-right: 0.8em!important;
-    }
+  input[type="radio"] {
+    margin: 0;
+    padding: 0;
+    margin-right: 0.8em !important;
+  }
 }

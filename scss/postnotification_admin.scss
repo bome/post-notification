@@ -3,11 +3,14 @@
 .post_notification_admin_table {
   width: 100%;
   color: #333333;
+
   a {
     color: #333333;
+
     &:visited {
       color: #333333;
     }
+
     &:hover {
       color: #333333;
       text-decoration: #333333 underline;
@@ -16,38 +19,45 @@
 
   th {
     text-align: left;
-    font-weight: bold ;
+    font-weight: bold;
     color: #555555;
   }
+
   .pn_remove {
     width: 5%;
     text-align: center;
   }
+
   .pn_mail_address {
     width: 22%;
     padding-left: 5px;
     min-width: 210px;
   }
+
   .pn_accepted {
     width: 3%;
     text-align: center;
     min-width: 40px;
   }
+
   .pn_date_accepted {
     width: 15%;
     padding-left: 5px;
     min-width: 160px;
   }
+
   .pn_subscribed_cats {
     width: 20%;
     padding-left: 5px;
     min-width: 225px;
   }
+
   .pn_ip {
     width: 6%;
     padding-left: 5px;
     min-width: 100px;
   }
+
   .pn_user_link {
     width: 10%;
     text-align: center;

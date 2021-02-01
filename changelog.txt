@@ -1,3 +1,6 @@
+// new Release from Bome 2021
+// http://bome.com
+
 // Release 1.2.40
 
 // 17.03.13
@@ -591,4 +594,4 @@ Removed the Meta-tag until it's configurable
 // 25.01.07
 Started with I18N
 Changed @@site to @@weblog
-Exported the successful regestration-page to a template.
+Exported the successful registration-page to a template.

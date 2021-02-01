@@ -2,6 +2,16 @@
 # Info                                                                                                            #
 #-----------------------------------------------------------------------------------------------------------------#
 # Titel: Post Notification                                                                                        #
+#                                                                                                                 #
+#   - Maintained since 2020 by Bome                                                                               #
+#   - http://bome.com                                                                                             #
+#   - https://github.com/bome/post-notification                                                                   #
+#-----------------------------------------------------------------------------------------------------------------#
+
+#-----------------------------------------------------------------------------------------------------------------#
+# Info                                                                                                            #
+#-----------------------------------------------------------------------------------------------------------------#
+# Titel: Post Notification                                                                                        #
 # I worked this plugin over which was maintaind by Frank Bueltge.                                                 #
 # Changes:                                                                                                        #
 #  - No special install scripts have to be run                                                                    #
@@ -10,10 +20,10 @@
 #  - Mails are sent after beeing published.                                                                       #
 #  - You can decide how many mails are sent at once and how long the pause should be before sending the next mails#
 #  - Some security-issues were solved                                                                             #
-#  - The HTML to text - conversaion was changed                                                                   #
+#  - The HTML to text - conversion was changed                                                                   #
 #  - Umlauts work                                                                                                 #
 #  - The name was changed                                                                                         #
-#  - The Newsletter-function was deaktivated. It'l come back in one of the next versions.                         #
+#  - The Newsletter-function was deactivated. It'll come back in one of the next versions.                         #
 #  - I18N is on it's way. Maby in one of the next versions.                                                       #
 # see Changelog.txt for furter changes                                                                            #
 #-----------------------------------------------------------------------------------------------------------------#
@@ -25,14 +35,14 @@
 # Titel: Newsletter (de) v2.3.1 rev5                       #
 #                                                          #
 # Das Plugin stammt im Original von Brian Groce,           #
-# der es auf Basis von Jon Anhold erstellte und wurd       #
+# der es auf Basis von Jon Anhold erstellte und wurde       #
 # von Frank B�ltge ins deutsche �bersetzt. Au�erdem wurden #
 # einige kleine Modifikationen von ihm im Code vorgenommen.#
 #                                                          #
 # Autor: Frank Bueltge http://bueltge.de                   #
 # Datum: Mai 2006                                          #
 #                                                          #
-# Notitz: Die Version wurde unter WP1.5 und 2.0 getestet.  #
+# Notiz: Die Version wurde unter WP1.5 und 2.0 getestet.  #
 #----------------------------------------------------------#
 
 #------------------------------------------------------------------------------------------------------------------#
