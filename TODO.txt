@@ -1,0 +1,11 @@
+optionally notify an admin (enter email addresses in backend) on every subscription attempt.
+
+Prevent authentication emails sent when bots enter an email address in a Subscribe field. using JavaScript, add another field when subscribing non-logged in users.
+
+Refactor: remove all ?> at the end of php files.
+
+Use standard Wordpress forms for subscribing, so that it's easier to secure the subscription process.
+
+Change http accesses in such a way that you can easily create a fail2ban rule for detecting abuse. Most importantly, to catch repeated subscribing, without an account, of different email addresses (max. 4 attempts) or of the same email address (max 10 attempts if captcha enabled, 3 attempts if not). For example, by specifying the operation (sent_activation_email) and the email address as URL parameters.
+
+Refactor: replace @@shortcodes with [shortcode]. Will, hopefully, allow to remove the expensive filter for “the_content”. Will require an update of all pages that use @@ shortcodes, and the post notification templates.
