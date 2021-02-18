@@ -190,12 +190,12 @@ if ( ! function_exists( 'add_meta_box' ) ) {
 
 		$t_posts = $wpdb->prefix . 'post_notification_posts';
 
-		$notify = $_POST['post_notification_notify'];
-
-		//The post came in some other way. Set to def.
-		if ( $notify == '' ) {
+		if ( empty ( $_POST['post_notification_notify'] ) ) {
 			$notify = 'def';
+		} else {
+			$notify = $_POST['post_notification_notify'];
 		}
+
 		//Todo, userlevels
 
 		$status = $wpdb->get_var( "SELECT notification_sent FROM $t_posts WHERE post_ID = '$post_ID'" );

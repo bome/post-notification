@@ -4,14 +4,14 @@ function post_notification_admin_sub() {
 	require_once( POST_NOTIFICATION_PATH . 'sendmail.php' );
 
 	echo '<h3>' . __( 'Test', 'post_notification' ) . '</h3>'; ?>
-
     <form id="test" method="post" action="admin.php?page=post_notification/admin.php&amp;action=test">
         <table class="post_notification_admin_table">
 
             <tr class="alternate">
                 <th class="pn_th_caption"><?php _e( 'Post id:', 'post_notification' ) ?></th>
                 <td>
-                    <input name="pid" type="text" size="35" value="<?php echo $_POST['pid'] ?>"/>
+                    <input name="pid" type="text" size="35" value="<?php if ( ! empty( $_POST['pid'] ) ) {
+					    echo $_POST['pid']; } ?>"/>
                 </td>
             </tr>
             <tr class="alternate">
@@ -22,8 +22,10 @@ function post_notification_admin_sub() {
 
             </tr>
 			<?php
-			if ( ( $email = $_POST['email'] ) == '' ) {
+			if ( empty ( $_POST['email'] ) ) {
 				$email = get_option( 'post_notification_from_email' );
+			} else {
+				$email = $_POST['email'];
 			} ?>
             <tr class="alternate">
                 <th class="pn_th_caption"><?php _e( 'Email:', 'post_notification' ) ?></th>
@@ -33,10 +35,13 @@ function post_notification_admin_sub() {
             </tr>
 			<?php
 			///Find templates
-			if ( ( $template = $_POST['template'] ) == '' ) {
+			if ( empty ( $_POST['template'] ) ) {
 				$template = get_option( 'post_notification_template' );
+			} else {
+				$template = $_POST['template'];
 			}
-			$dir_handle = opendir( post_notification_get_profile_dir() );
+			$dir_handle   = opendir( post_notification_get_profile_dir() );
+			$en_templates = "";
 			while ( false !== ( $file = readdir( $dir_handle ) ) ) {
 				if ( substr( $file, - 5 ) === '.html' || substr( $file, - 4 ) === '.txt' ) {
 					$en_templates .= "<option value=\"$file\" ";
@@ -60,7 +65,7 @@ function post_notification_admin_sub() {
                 <td>
                     <input type="checkbox" name="nosend" value="true"
 						<?php
-						if ( $_POST['nosend'] === 'true' ) {
+						if ( !empty($_POST['nosend']) AND $_POST['nosend'] === 'true' ) {
 							echo ' checked="checked" ';
 						} ?>
                     />
@@ -99,7 +104,12 @@ function post_notification_admin_sub() {
 			$GLOBALS['wp_query']->init_query_flags();
 
 			$maildata = post_notification_create_email( $_POST['pid'], $_POST['template'] );
-			$send     = $_POST['nosend'] !== 'true';
+
+			// if now post was found -> leave here!
+			if ( $maildata === false ) {
+				return;
+			}
+			$send     = empty( $_POST['nosend'] );
 
 			$maildata = post_notification_sendmail( $maildata, $email->email_addr, '', $send ); //returns the modified body.
 			if ( $maildata['sent'] == false ) {

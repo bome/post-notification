@@ -36,6 +36,9 @@ function post_notification_create_email( $id, $template = '' ) {
 	//Get the post
 	$post = get_post( $id );
 
+	if (empty($post)) {
+		return false;
+	}
 
 	$post_url = get_permalink( $post->ID );
 

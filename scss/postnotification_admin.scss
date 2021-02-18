@@ -66,11 +66,11 @@
 
   tr {
     margin: 7px;
-    background: #cccccc;
+    background: #dddddd;
   }
 
   tr:nth-child(odd) {
-    background: #bbbbbb;
+    background: #cccccc;
   }
 
   .pn_th_caption {
@@ -105,7 +105,7 @@
 
   li {
     float: left;
-    background-color: #bbbbbb;
+    background-color: #dddddd;
     border: 1px solid #333333;
     margin: 3px;
 
@@ -118,7 +118,7 @@
     text-align: center;
     padding: 8px;
     text-decoration: none;
-    font-weight: bold;
+    //font-weight: bold;
     font-size: 120%;
 
   }
@@ -126,5 +126,9 @@
   /* Change the link color to #111 (black) on hover */
   li a:hover {
     background-color: #cccccc;
+  }
+
+  li.activepnaction {
+    background-color: #bbbbbb;
   }
 }

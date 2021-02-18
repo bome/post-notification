@@ -42,11 +42,10 @@ function post_notification_admin_sub() {
             <b><?php _e( 'Emails', 'post_notification' ); ?>:</b>
             <br/>
             <textarea name="imp_emails" cols="60" rows="10" class="commentBox"><?php
-				if ( $_POST['ldif_import'] ) {
-					echo ldif2addresses( $_FILES['ldif_file']['tmp_name'] );
-				} ?></textarea>
+	            if ( ! empty( $_POST['ldif_import'] ) and $_POST['ldif_import'] ) {
+		            echo ldif2addresses( $_FILES['ldif_file']['tmp_name'] );
+	            } ?></textarea>
             <br/><br/>
-
 
 			<?php _e( 'What should be done?', 'post_notification' ); ?><br/>
             <input type="radio" name="logic" value="add"
