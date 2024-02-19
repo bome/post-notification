@@ -6,7 +6,7 @@
 # Wordpress. Please see the readme.txt for details.
 #------------------------------------------------------
 
-class Walker_pn_CategoryDropdown extends Walker {
+class Walker_pn_CategoryDropdown extends Walker_Nav_Menu {
 
 	public $tree_type = 'category';
 	public $db_fields = array( 'parent' => 'category_parent', 'id' => 'cat_ID' ); //TODO: decouple this
@@ -29,9 +29,11 @@ class Walker_pn_CategoryDropdown extends Walker {
 }
 
 function post_notification_admin_sub() {
-	global $wpdb;
-	$t_emails = $wpdb->prefix . 'post_notification_emails';
-	$t_cats   = $wpdb->prefix . 'post_notification_cats';
+    global $wpdb;
+    $t_emails = $wpdb->prefix . 'post_notification_emails';
+    $t_cats   = $wpdb->prefix . 'post_notification_cats';
+
+    $show_unconfirmed_mails = true;
 
 	$action = filter_input( INPUT_GET, 'action', FILTER_SANITIZE_SPECIAL_CHARS );
 	if ( $action === 'remove_email' ) {
@@ -48,8 +50,7 @@ function post_notification_admin_sub() {
 			echo '<div class = "error">' . __( 'No address checked!', 'post_notification' ) . '</div>';
 		} else {
 			$removeEmail = filter_input( INPUT_POST, 'removeEmail', FILTER_DEFAULT, FILTER_REQUIRE_ARRAY );
-			echo __( 'The following addresses were deleted:', 'post_notification' ) . '<br /><br />';
-
+			echo __( 'The following addresses were deleted (complete unsubscribe):', 'post_notification' ) . '<br /><br />';
 
 			foreach ( $removeEmail as $removeAddress ) {
 				//Multiple table delete only works with mysql 4.0 or 4.1
@@ -61,10 +62,10 @@ function post_notification_admin_sub() {
 		}
 	} else {
 		$Email = filter_input( INPUT_POST, 'email', FILTER_SANITIZE_SPECIAL_CHARS );
-		if ( $Email !== null and strlen( $Email ) > 7 ) {
-			$email = $Email;
+		if ( $Email !== null ) {
+			$search_email = $Email;
 		} else {
-			$email = '*';
+			$search_email = '';
 		}
 		$categories = filter_input( INPUT_POST, 'cats', FILTER_DEFAULT, FILTER_REQUIRE_ARRAY );
 		if ( $categories !== null ) {
@@ -119,7 +120,7 @@ function post_notification_admin_sub() {
 			$sortorder = 'ASC';
 		}
 
-		$sortsrt = " $sortby $sortorder ";
+		$sortsrt = trim($sortby) ." " . trim($sortorder);
 
 		$show_idp = filter_input( INPUT_POST, 'show_id', FILTER_SANITIZE_SPECIAL_CHARS );
 		if ( $show_idp !== null ) {
@@ -129,13 +130,15 @@ function post_notification_admin_sub() {
 		if ( $show_listp !== null ) {
 			$show_list = true;
 		}
-		$show_unconfp = filter_input( INPUT_POST, 'show_unconf', FILTER_SANITIZE_SPECIAL_CHARS );
-		if ( $show_unconfp !== null ) {
-			$show_unconf = true;
-		}
+
+            $show_unconfp = filter_input(INPUT_POST, 'show_unconfirmed_mails', FILTER_SANITIZE_SPECIAL_CHARS);
+            if ($show_unconfp === NULL) {
+                $show_unconfirmed_mails = false;
+            }
+
 
 		echo '<form method="post" action="admin.php?page=post_notification/admin.php&action=' . $action . '"> ';
-		echo __( 'Email:', 'post_notification' ) . ' <input name="email" type="text" size="30" value="' . $email . '"> ';
+		echo __( 'Email:', 'post_notification' ) . ' <input name="email" type="text" size="30" value="' . $search_email . '"> ';
 		echo __( 'Cats:', 'post_notification' ) . ' <select name="cats[]" multiple="multiple"  style="height:auto"> ';
 		$cats   = get_categories();
 		$walker = new Walker_pn_CategoryDropdown;
@@ -156,8 +159,8 @@ function post_notification_admin_sub() {
 		     '</select>';
 
 		echo '<BR  /> ';
-		echo __( 'Show unconfirmed mails:', 'post_notification' ) . ' <input name="show_unconf" type="checkbox" ';
-		if ( ! empty( $show_unconf ) ) {
+		echo __( 'Show unconfirmed mails (only):', 'post_notification' ) . ' <input name="show_unconfirmed_mails" type="checkbox" ';
+		if ( ! empty ( $show_unconfirmed_mails ))  {
 			echo ' checked = "checked" ';
 		}
 		echo '/><br /> ';
@@ -181,36 +184,22 @@ function post_notification_admin_sub() {
 			echo '<form method="post" action="admin.php?page=post_notification/admin.php&action=remove_email">';
 		}
 
+        $sel_cats = implode( ',', $sel_cats );
+        $search_array = post_notification_search_mail_in_database ($search_email,  $sel_cats, $sortsrt, $start, $limit, $show_unconfirmed_mails );
 
-		$email = str_replace( '*', '%', $email );
+        if ($search_array['total'] < 1 ) {
+            echo '<p class="error">' . __('No entries found!', 'post_notification') . '</p>';
+            echo '</div>';
 
-		$sel_cats = implode( ',', $sel_cats );
-
-
-		( ! empty( $show_unconf ) ) ? $wadd = ' AND gets_mail IS NULL ' : $wadd = ' AND gets_mail = 1 ';
-		if ( $sel_cats == '' ) {
-			$emails = $wpdb->get_results( "SELECT email_addr, gets_mail, last_modified, date_subscribed, id, act_code, subscribe_ip FROM $t_emails  WHERE email_addr LIKE '$email' $wadd ORDER BY $sortsrt LIMIT $start, $limit " );
-			$total  = $wpdb->get_var( "SELECT COUNT(*) FROM $t_emails  WHERE email_addr LIKE '$email' $wadd" );
-		} else {
-			$emails = $wpdb->get_results( "SELECT email_addr, gets_mail, last_modified, date_subscribed, e.id AS id, act_code, subscribe_ip FROM $t_emails e, $t_cats c WHERE email_addr LIKE '$email' $wadd AND e.id = c.id AND c.cat_id IN ($sel_cats) GROUP BY e.id ORDER BY $sortsrt LIMIT $start, $limit " );
-			$total  = $wpdb->get_var( "SELECT COUNT(e.id)  FROM $t_emails e, $t_cats c WHERE email_addr LIKE '$email' $wadd AND e.id = c.id AND c.cat_id IN ($sel_cats)" );
-		}
-
-		if ( ! $emails ) {
-			echo '<p class="error">' . __( 'No entries found!', 'post_notification' ) . '</p>';
-			echo '</div>';
-
-			return;
-		}
+            return;
+        }
 		echo '<p>';
-		echo str_replace(
-			array( '@@start', '@@end', '@@total' ),
-			array( $start, $start + count( $emails ) - 1, $total ),
-			__( 'Showing entry @@start to @@end of @@total entries.', 'post_notification' )
-		);
-		echo '</p>';
+        echo str_replace(
+            array('@@start', '@@end', '@@total'),
+            array($start, $start + count($search_array['emails']) - 1, $search_array['total']), __('Showing entry @@start to @@end of @@total entries.', 'post_notification'));
+        echo '</p>';
 		if ( empty ( $show_list ) ) {
-			echo '<table class="post_notification_admin_table"><tr>';
+			echo '<table class="post_notification_admin_table tablesorter"><thead><tr>';
 			if ( $remove ) {
 				echo '<th class="pn_remove"><b>&nbsp;</b></th>';
 			}
@@ -222,26 +211,26 @@ function post_notification_admin_sub() {
 				<th class="pn_date_accepted"><b>' . __( 'Date accepted', 'post_notification' ) . '</th>
 				<th class="pn_ip">' . __( 'IP', 'post_notification' ) . '</th>
 				
-				</tr>';
+				</tr></thead><tbody>';
 		} else {
 			echo '<br /><br />';
 		}
 
-		foreach ( $emails as $email ) {
-			$email_addr      = $email->email_addr;
-			$gets_mail       = $email->gets_mail;
+		foreach ( $search_array['emails'] as $search_email ) {
+			$email_addr      = $search_email->email_addr;
+			$gets_mail       = $search_email->gets_mail;
 			$datestr         = get_option( 'date_format' ) . ' ' . get_option( 'time_format' );
-			$date_subscribed = post_notification_date_i18n_tz( $datestr, post_notification_mysql2gmdate( $email->date_subscribed ) );
-			$id              = $email->id;
-			$ip              = long2ip( $email->subscribe_ip );
+			$date_subscribed = post_notification_date_i18n_tz( $datestr, post_notification_mysql2gmdate( $search_email->date_subscribed ) );
+			$id              = $search_email->id;
+			$ip              = long2ip( $search_email->subscribe_ip );
 
-			if ( $gets_mail == "1" ) {
+			if ( $gets_mail === "1" ) {
 				$gets_mail = __( 'Yes', 'post_notification' );
 			} else {
 				$gets_mail = __( 'No', 'post_notification' );
 			}
 
-			$modlink = post_notification_get_mailurl( $email->email_addr, $email->act_code );
+			$modlink = post_notification_get_mailurl( $search_email->email_addr, $search_email->act_code );
 
 
 			$subcats_db = $wpdb->get_results( "SELECT cat_id FROM $t_cats  WHERE id = " . $id . " ORDER BY cat_id ASC" );
@@ -285,7 +274,7 @@ function post_notification_admin_sub() {
 				echo $email_addr . '<br/>';
 			}
 		}
-		echo "</table>";
+		echo "</tbody></table>";
 		if ( $remove ) {
 			?>
             <script type="text/javascript">
@@ -306,4 +295,37 @@ function post_notification_admin_sub() {
 	}
 }
 
-?>
+function post_notification_search_mail_in_database($search_string, $sel_cats, $sortsrt, $start, $limit, $show_unconfirmed_mails)
+{
+    global $wpdb;
+    $email_table = $wpdb->prefix . 'post_notification_emails';
+    $cat_table = $wpdb->prefix . 'post_notification_cats';
+
+    // start sql statement
+    $qry_from = $email_table;
+
+    $query_order = " GROUP BY " . $email_table . ".id ORDER BY " . $email_table . "." . $sortsrt . " LIMIT " . $start . ", " . $limit;
+
+    if (!empty($show_unconfirmed_mails)) {
+        $query_where = ' WHERE gets_mail IS NULL';
+    } else {
+        $query_where = ' WHERE gets_mail = 1';
+    }
+
+    //add 2nd table if neccessary
+    if (!empty ($sel_cats)) {
+        $qry_from .= " LEFT JOIN " . $cat_table . " ON " . $email_table . ".id = " . $cat_table . ".id";
+        $query_where .= " AND " . $cat_table . ".cat_id IN ($sel_cats)";
+    }
+
+    if (!empty($search_string)) {
+        $query_where .= " AND email_addr LIKE '%" . $search_string . "%'";
+    }
+
+    $result_array['total'] = $wpdb->get_var("SELECT COUNT(*) FROM $qry_from $query_where");
+
+    $query = "SELECT * FROM " . $qry_from . $query_where . $query_order;
+    $result_array['emails'] = $wpdb->get_results($query);
+
+    return $result_array;
+}

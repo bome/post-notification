@@ -156,4 +156,3 @@ function post_notification_for_future_use() {
 	}
 }
 
-?>		

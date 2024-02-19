@@ -54,7 +54,7 @@ function post_notification_mysql2gmdate( $mysqlstring ) {
 }
 
 function post_notification_date2mysql( $unixtimestamp = 0 ) {
-	if ( $unixtimestamp == 0 ) {
+	if ( empty( $unixtimestamp ) ) {
 		return gmdate( 'Y-m-d H:i:s' );
 	}
 

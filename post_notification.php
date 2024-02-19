@@ -476,4 +476,4 @@ if ( ! function_exists( 'add_meta_box' ) ) {
 	add_action( 'plugins_loaded', 'post_notification_widget_registrieren' );
 
 
-	?>
+

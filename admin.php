@@ -59,7 +59,7 @@ load_plugin_textdomain( 'post_notification', POST_NOTIFICATION_PATH_REL ); ?>
                 <a href="admin.php?page=post_notification/admin.php&amp;action=list_email"><?php _e( 'List addresses', 'post_notification' ) ?></a>
             </li>
             <li>
-                <a href="admin.php?page=post_notification/admin.php&amp;action=remove_email"><?php _e( 'Delete addresses', 'post_notification' ) ?></a>
+                <a href="admin.php?page=post_notification/admin.php&amp;action=remove_email"><?php _e( 'Unsubscribe/Delete addresses', 'post_notification' ) ?></a>
             </li>
             <li>
                 <a href="admin.php?page=post_notification/admin.php&amp;action=settings"><?php _e( 'Settings', 'post_notification' ) ?></a>
@@ -160,5 +160,3 @@ load_plugin_textdomain( 'post_notification', POST_NOTIFICATION_PATH_REL ); ?>
 
 	echo '</div>';
 	}
-
-	?>

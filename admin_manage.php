@@ -55,7 +55,7 @@ function post_notification_admin_sub() {
             <input type="radio" name="logic"
                    value="repl"><?php _e( 'Replace with selected categories', 'post_notification' ); ?></input><br/>
             <input type="radio" name="logic"
-                   value="del"><?php _e( 'Delete the listed emails', 'post_notification' ); ?></input><br/>
+                   value="del"><?php _e( 'Unsubscribe/Delete the listed emails', 'post_notification' ); ?></input><br/>
 			<?php
 			$selected_cats = explode( ',', get_option( 'post_notification_selected_cats' ) );
 			echo post_notification_get_catselect( '', $selected_cats ); ?>

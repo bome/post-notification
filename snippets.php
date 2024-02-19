@@ -12,6 +12,6 @@
 post_notification_get_subscribers() will return the number of subscribers as integer.
 -->
 <h2>Number of Mail-Subscribers</h2>
-<?php echo post_notification_get_subscribers(); ?>
+<?php echo post_notification_get_subscribers();
 
 
