@@ -14,12 +14,11 @@ function post_notification_admin_page_load() {
 	//$editing = true;
 }
 
-function post_notification_admin_page()
-{
+function post_notification_admin_page() {
 //Ok, now we'll need I18N
-load_plugin_textdomain( 'post_notification', POST_NOTIFICATION_PATH_REL ); ?>
+	load_plugin_textdomain( 'post_notification', POST_NOTIFICATION_PATH_REL ); ?>
 
-<div class="wrap">
+    <div class="wrap">
 
     <h2>Post Notification</h2>
 
@@ -28,22 +27,12 @@ load_plugin_textdomain( 'post_notification', POST_NOTIFICATION_PATH_REL ); ?>
 	// Secure the admin area
 	//********************************************************//
 
-	global $user_level;
-	get_currentuserinfo();
-	if ( get_option( 'db_version' ) < 4772 ) {
-		if ( $user_level < 8 ) {
-			echo __( "You need at least Userlevel 8 to modify the settings.", 'post_notification' );
+	if ( ! current_user_can( 'administrator' ) ) {
+		echo __( "You need to be administrator to modify the settings.", 'post_notification' );
 
-			return;
-		}
-	} else {
-		global $current_user;
-		if ( ! $current_user->has_cap( 'administrator' ) ) {
-			echo __( "You need to be administrator to modify the settings.", 'post_notification' );
-
-			return;
-		}
-	} ?>
+		return;
+	}
+	?>
 
     <div id="pn_admin_menu">
         <ul>
@@ -159,4 +148,4 @@ load_plugin_textdomain( 'post_notification', POST_NOTIFICATION_PATH_REL ); ?>
 	}
 
 	echo '</div>';
-	}
+}

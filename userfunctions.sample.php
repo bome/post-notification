@@ -37,24 +37,19 @@ function post_notificataion_uf_perPost( $post_id ) {
 }
 
 /**
- * This is called for every every mail sent out.
+ * This function is called for every email sent out. It creates an array used for replacements.
  *
  * @param int $post_id The id of the Post
- * @param string $emailadd The emailadress this Mail will be sent to.
+ * @param string $emailAddress The email address this Mail will be sent to.
  *
  * @return array An array of replacements
  */
+function createReplacementsForEmail( $post_id, $emailAddress ) {
+	$replacements = [];
 
-function post_notificataion_uf_perEmail( $post_id, $emailadd ) {
-	$rv = array();
-	mt_srand( (double) microtime() * 1000000 );
+	$replacements['@@lucky'] = ( mt_rand( 0, 1000 ) == 50 )
+		? "Today is your lucky day"
+		: "";
 
-	//Always make shure, that there is a value assigned, otherwise the var will not be replaced.
-	if ( mt_rand( 0, 1000 ) == 50 ) {
-		$rv['@@lucky'] = "Today is your lucky day";
-	} else {
-		$rv['@@lucky'] = "";
-	}
-
-	return $rv;
+	return $replacements;
 }

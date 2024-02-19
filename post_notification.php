@@ -26,22 +26,27 @@ Min WP Version: 5
  */
 define( "POST_NOTIFICATION_PLUGIN_DIR", dirname( plugin_basename( __FILE__ ) ) );
 
+// Get the content and plugin directory paths dynamically
+$content_dir = defined( 'WP_CONTENT_DIR' ) ? trailingslashit( WP_CONTENT_DIR ) : dirname( __FILE__ ) . '/wp-content';
+$plugin_dir = defined( 'WP_PLUGIN_DIR' ) ? trailingslashit( WP_PLUGIN_DIR ) : $content_dir . '/plugins';
+
 if ( defined( "WP_PLUGIN_DIR" ) ) {
-	# Wordpress 2.6 and newer allows more flexible plugin location
-	//Todo: Check whether the _REL is really needed.
-	define( "POST_NOTIFICATION_PATH_REL", PLUGINDIR . '/' . POST_NOTIFICATION_PLUGIN_DIR );
-	define( "POST_NOTIFICATION_PATH", WP_PLUGIN_DIR . '/' . POST_NOTIFICATION_PLUGIN_DIR . '/' );
-	define( "POST_NOTIFICATION_PATH_URL", WP_PLUGIN_URL . '/' . POST_NOTIFICATION_PLUGIN_DIR . '/' );
-	define( "POST_NOTIFICATION_DATA", WP_CONTENT_DIR . '/post_notification/' );
+    // WordPress 2.6 and newer allows more flexible plugin location
+    define( "POST_NOTIFICATION_PATH_REL", POST_NOTIFICATION_PLUGIN_DIR );
+    define( "POST_NOTIFICATION_PATH", $plugin_dir . '/' . POST_NOTIFICATION_PLUGIN_DIR . '/' );
+    define( "POST_NOTIFICATION_PATH_URL", plugins_url( '/', __FILE__ ) );
+    define( "POST_NOTIFICATION_DATA", $content_dir . '/post_notification/' );
 } else {
-	# Traditional approach
-	define( "POST_NOTIFICATION_DATA", WP_CONTENT_DIR . '/post_notification/' );
-	define( "POST_NOTIFICATION_PATH_REL", PLUGINDIR . '/' . POST_NOTIFICATION_PLUGIN_DIR );
-	define( "POST_NOTIFICATION_PATH", ABSPATH . POST_NOTIFICATION_PATH_REL . '/' );
-	define( "POST_NOTIFICATION_PATH_URL", get_option( 'siteurl' ) . '/wp-content/plugins/' . POST_NOTIFICATION_PLUGIN_DIR . '/' );
+    // Traditional approach
+    define( "POST_NOTIFICATION_DATA", $content_dir . '/post_notification/' );
+    define( "POST_NOTIFICATION_PATH_REL", POST_NOTIFICATION_PLUGIN_DIR );
+    define( "POST_NOTIFICATION_PATH", $content_dir . '/plugins/' . POST_NOTIFICATION_PLUGIN_DIR . '/' );
+    define( "POST_NOTIFICATION_PATH_URL", get_option( 'siteurl' ) . '/wp-content/plugins/' . POST_NOTIFICATION_PLUGIN_DIR . '/' );
 }
 
-define( "post_notification_path", POST_NOTIFICATION_PATH ); //To fix some problems.
+define( "post_notification_path", POST_NOTIFICATION_PATH ); // To fix some problems.
+
+
 
 //Include all the helper functions
 require_once( POST_NOTIFICATION_PATH . "functions.php" );
