@@ -139,6 +139,9 @@ $textyes = __( 'Yes', 'post_notification' );
 $textdef = __( 'Default', 'post_notification' );
 $default = false;
 
+$sendY = '';
+$sendN = '';
+
 if ( 0 != $post_ID ) { //We've got an ID.
 	$status = $wpdb->get_var( "SELECT notification_sent FROM $t_posts WHERE post_ID = '$post_ID'" );
 
