@@ -65,6 +65,16 @@ function post_notification_check_captcha() {
 	return $my_captcha->verify( $captcha );
 }
 
+function getInput($key, $default = '', $filter = FILTER_SANITIZE_SPECIAL_CHARS, $flags = null) {
+	$postValue = filter_input(INPUT_POST, $key, $filter, $flags);
+	if($postValue !== null && $postValue !== '') {
+		return $postValue;
+	}
+
+	$getValue = filter_input(INPUT_GET, $key, $filter, $flags);
+	return ($getValue !== null && $getValue !== '') ? $getValue : $default;
+}
+
 /**
  * This creates the content
  */
@@ -95,34 +105,10 @@ function post_notification_page_content() {
 	// ******************************************************** //
 	//                  GET VARIABLES FROM URL
 	// ******************************************************** //
-	$action = filter_input( INPUT_GET, 'action', FILTER_SANITIZE_SPECIAL_CHARS );
-	$addr   = filter_input( INPUT_GET, 'addr', FILTER_SANITIZE_SPECIAL_CHARS );
-	$code   = filter_input( INPUT_GET, 'code', FILTER_SANITIZE_SPECIAL_CHARS );
-
-	if ( isset( $_POST["addr"] ) ) {
-		$postaddr = filter_input( INPUT_POST, 'addr', FILTER_SANITIZE_SPECIAL_CHARS );
-		if ( $postaddr !== '' or $postaddr !== null or $postaddr !== false ) {
-			$addr = $postaddr;
-		}
-	}
-	if ( isset( $_POST["action"] ) ) {
-		$postaction = filter_input( INPUT_POST, 'action', FILTER_SANITIZE_SPECIAL_CHARS );
-		if ( $postaction !== '' or $postaction !== null or $postactionr !== false ) {
-			$action = filter_input( INPUT_POST, 'action', FILTER_SANITIZE_SPECIAL_CHARS );
-		}
-	}
-	if ( isset( $_POST["code"] ) ) {
-		$postcode = filter_input( INPUT_POST, 'code', FILTER_SANITIZE_SPECIAL_CHARS );
-		if ( $postcode !== '' or $postcode !== null or $postcode !== false ) {
-			$code = filter_input( INPUT_POST, 'code', FILTER_SANITIZE_SPECIAL_CHARS );
-		}
-	}
-	if ( isset( $_POST["pn_cats"] ) ) {
-		$postpn_cats = filter_input( INPUT_POST, 'pn_cats', FILTER_SANITIZE_SPECIAL_CHARS );
-		if ( $postpn_cats !== '' or $postpn_cats !== null or $postpn_cats !== false ) {
-			$pn_cats = filter_input( INPUT_POST, 'pn_cats', FILTER_DEFAULT, FILTER_REQUIRE_ARRAY );
-		}
-	}
+	$action  = getInput('action');
+	$addr    = getInput('addr');
+	$code    = getInput('code');
+	$pn_cats = getInput('pn_cats', null, FILTER_DEFAULT, FILTER_REQUIRE_ARRAY);
 
 	$msg = &$content['body'];
 
