@@ -69,6 +69,7 @@ function post_notification_check_captcha() {
  * This creates the content
  */
 function post_notification_page_content() {
+	$pn_cats = array();
 	global $post_notification_page_content_glob, $wpdb;
 	if ( $post_notification_page_content_glob ) {
 		return $post_notification_page_content_glob;

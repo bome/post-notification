@@ -365,7 +365,7 @@ function post_notification_get_catselect( $all_str = '', $subcats = array() ) {
 	$cats_str .= '>' . $all_str . '</li>';
 	$cats_str .= '<ul class="children">' . $walker->walk( $cats, 0, $walkparam ) . '</ul>';
 	$cats_str .= '</ul>';
-	$cats_str .= '<script type="text/javascript"><!--' . "\n  post_notification_cats_init();\n //--></script>";
+	$cats_str .= "<script type=\"text/javascript\"><!--\n  post_notification_cats_init();\n //--></script>";
 
 	return $cats_str;
 }
@@ -432,7 +432,7 @@ function post_notification_get_code( $addr, $code = '' ) {
 			$code = md5( mt_rand( 100000, 99999999 ) . time() );
 			if ( $query->id == '' ) {
 				$ip = sprintf( '%u', ip2long( $_SERVER['REMOTE_ADDR'] ) );
-				if ( $ip < 0 || $ip === false ) {
+				if ( $ip < 0 || empty( $ip ) ) {
 					$ip = 0;
 				} //This has changed with php 5
 				$wpdb->query(
