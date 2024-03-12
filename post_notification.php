@@ -91,7 +91,7 @@ add_action( 'admin_enqueue_scripts', 'post_notification_admin_css' );
 
 /// Add the Admin panel
 function post_notification_admin_adder() {
-	$name = add_options_page( 'Post Notification', 'Post Notification', 8, 'post_notification/admin.php', 'post_notification_admin' );
+	$name = add_options_page( 'Post Notification', 'Post Notification', 'manage_options', 'post_notification/admin.php', 'post_notification_admin' );
 
 	//This is for future use.
 	//add_action('load-' . $name, 'post_notification_admin_load');
