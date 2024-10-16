@@ -436,12 +436,12 @@ if ( ! function_exists( 'add_meta_box' ) ) {
 
 
 		//Write new options
-		if ( $_POST["post_notification_widget-sent"] ) {
-			$newoptions['title']   = strip_tags( stripslashes( $_POST["post_notification_widget-title"] ) );
-			$newoptions['subtext'] = strip_tags( stripslashes( $_POST["post_notification_widget-subtext"] ) );
-			$newoptions['size']    = strip_tags( stripslashes( $_POST["post_notification_widget-size"] ) );
-			$newoptions['submit']  = strip_tags( stripslashes( $_POST["post_notification_widget-submit"] ) );
-		}
+		if ( isset( $_POST["post_notification_widget-sent"] ) ) {
+    $newoptions['title']   = strip_tags( stripslashes( $_POST["post_notification_widget-title"] ) );
+    $newoptions['subtext'] = strip_tags( stripslashes( $_POST["post_notification_widget-subtext"] ) );
+    $newoptions['size']    = strip_tags( stripslashes( $_POST["post_notification_widget-size"] ) );
+    $newoptions['submit']  = strip_tags( stripslashes( $_POST["post_notification_widget-submit"] ) );
+}
 
 		//Write to db if they changed
 		if ( $options != $newoptions ) {
