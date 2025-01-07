@@ -215,7 +215,7 @@ function post_notification_create_email( $id, $template = '' ) {
 
 
 function post_notification_sendmail( $maildata, $addr, $code = '', $send = true ) {
-	$maildata['body'] = str_replace( '@@addr', $email->email_addr, $maildata['body'] );
+	$maildata['body'] = str_replace( '@@addr', $addr, $maildata['body'] );
 
 	$conf_url = post_notification_get_mailurl( $addr, $code );
 
@@ -228,7 +228,7 @@ function post_notification_sendmail( $maildata, $addr, $code = '', $send = true 
 	}
 
 	if ( get_option( 'post_notification_unsubscribe_link_in_header' ) == 'yes' ) {
-		$maildata['header'] = post_notification_add_additional_headers( $addr, $maildata );
+		$maildata['header'] = post_notification_add_additional_headers( $addr, $maildata, $code );
 	}
 
 	if ( $send ) {
@@ -373,6 +373,7 @@ function post_notification_send() {
 					$mailssent = $email->id; //Save where we stoped
 					break;
 				}
+				//$$fb 2020-01-06: why not using $email->act_code for the $code parameter?
 				post_notification_sendmail( $maildata, $email->email_addr, '' );
 
 				$maxsend --;
@@ -402,7 +403,7 @@ function post_notification_send() {
 	}
 }
 
-function post_notification_add_additional_headers( $addr, $maildata ) {
+function post_notification_add_additional_headers( $addr, $maildata, $code = '' ) {
 	// $$fb 2020-01-06 testing state:
 	// AppleMail on iPhone shows Unsubscribe button
 	// AppleMail on MacOS does not show Unsubscribe button, but does so for e.g. emails from Google with same types of headers.
@@ -432,7 +433,7 @@ function post_notification_add_additional_headers( $addr, $maildata ) {
 
 	if ( ! empty( $list_unsubscribeurl ) ) {
 		if ( ! empty( $list_unsubscribe ) ) {
-			$list_unsubscribeurl .= ",";
+			$list_unsubscribe .= ",";
 		}
 		$list_unsubscribe  .= "<" . $list_unsubscribeurl . ">";
 		$xlist_unsubscribe = "visit " . $list_unsubscribeurl;
