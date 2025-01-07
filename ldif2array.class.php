@@ -35,7 +35,7 @@ class ldif2array {
 
 
 	//== constructor ====================================================================
-	public function ldif2array(/*string*/ $file = '', /*bool*/ $process = false ) {
+	public function __construct(/*string*/ $file = '', /*bool*/ $process = false ) {
 		$this->file = $file;
 		if ( $process ) {
 			$this->makeArray();

@@ -28,7 +28,7 @@ class captcha {
 	 *
 	 * @return captcha
 	 */
-	public function captcha( $session_key, $temp_dir ) {
+	public function __construct( $session_key, $temp_dir ) {
 		$this->session_key = $session_key;
 		$this->temp_dir    = $temp_dir;
 	}
@@ -92,6 +92,8 @@ class captcha {
 		}
 
 		// generate a picture file that displays the random string
+		//error_log("captcha: " . $this->temp_dir . '/' . 'cap_' . md5( strtolower( $captcha_str ) ) . '.jpg' . " " . $captcha_str);
+
 		if ( $this->_generate_image( $this->temp_dir . '/' . 'cap_' . md5( strtolower( $captcha_str ) ) . '.jpg', $captcha_str ) ) {
 			$fh = fopen( $this->temp_dir . '/' . 'cap_' . $this->session_key . '.txt', "w" );
 			chmod( $this->temp_dir . '/' . 'cap_' . $this->session_key . '.txt', 0777 );

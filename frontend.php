@@ -65,21 +65,11 @@ function post_notification_check_captcha() {
 	return $my_captcha->verify( $captcha );
 }
 
-function getInput($key, $default = '', $filter = FILTER_SANITIZE_SPECIAL_CHARS, $flags = null) {
-	$postValue = filter_input(INPUT_POST, $key, $filter, $flags);
-	if($postValue !== null && $postValue !== '') {
-		return $postValue;
-	}
-
-	$getValue = filter_input(INPUT_GET, $key, $filter, $flags);
-	return ($getValue !== null && $getValue !== '') ? $getValue : $default;
-}
-
 /**
  * This creates the content
  */
 function post_notification_page_content() {
-	$pn_cats = array();
+
 	global $post_notification_page_content_glob, $wpdb;
 	if ( $post_notification_page_content_glob ) {
 		return $post_notification_page_content_glob;
@@ -105,10 +95,34 @@ function post_notification_page_content() {
 	// ******************************************************** //
 	//                  GET VARIABLES FROM URL
 	// ******************************************************** //
-	$action  = getInput('action');
-	$addr    = getInput('addr');
-	$code    = getInput('code');
-	$pn_cats = getInput('pn_cats', null, FILTER_DEFAULT, FILTER_REQUIRE_ARRAY);
+	$action = filter_input( INPUT_GET, 'action', FILTER_SANITIZE_SPECIAL_CHARS );
+	$addr   = filter_input( INPUT_GET, 'addr', FILTER_SANITIZE_SPECIAL_CHARS );
+	$code   = filter_input( INPUT_GET, 'code', FILTER_SANITIZE_SPECIAL_CHARS );
+
+	if ( isset( $_POST["addr"] ) ) {
+		$postaddr = filter_input( INPUT_POST, 'addr', FILTER_SANITIZE_SPECIAL_CHARS );
+		if ( $postaddr !== '' or $postaddr !== null or $postaddr !== false ) {
+			$addr = $postaddr;
+		}
+	}
+	if ( isset( $_POST["action"] ) ) {
+		$postaction = filter_input( INPUT_POST, 'action', FILTER_SANITIZE_SPECIAL_CHARS );
+		if ( $postaction !== '' or $postaction !== null or $postactionr !== false ) {
+			$action = filter_input( INPUT_POST, 'action', FILTER_SANITIZE_SPECIAL_CHARS );
+		}
+	}
+	if ( isset( $_POST["code"] ) ) {
+		$postcode = filter_input( INPUT_POST, 'code', FILTER_SANITIZE_SPECIAL_CHARS );
+		if ( $postcode !== '' or $postcode !== null or $postcode !== false ) {
+			$code = filter_input( INPUT_POST, 'code', FILTER_SANITIZE_SPECIAL_CHARS );
+		}
+	}
+	if ( isset( $_POST["pn_cats"] ) ) {
+		$postpn_cats = filter_input( INPUT_POST, 'pn_cats', FILTER_SANITIZE_SPECIAL_CHARS );
+		if ( $postpn_cats !== '' or $postpn_cats !== null or $postpn_cats !== false ) {
+			$pn_cats = filter_input( INPUT_POST, 'pn_cats', FILTER_DEFAULT, FILTER_REQUIRE_ARRAY );
+		}
+	}
 
 	$msg = &$content['body'];
 
@@ -141,7 +155,6 @@ function post_notification_page_content() {
 		$hdr_nl = "\n";
 	}
 	$blogname = get_option( 'blogname' );
-
 
 	// ******************************************************** //
 	//                      Code Check
@@ -285,7 +298,7 @@ function post_notification_page_content() {
 		//             to allow subscription if we already
 		//             have a Wordpress account
 		// ******************************************************** //
-		if ( ( $action === "subscribe" || $action == '' ) && is_email( $addr ) && email_exists( $addr ) ) {
+		if ( ( $action === "subscribe" || $action == '' ) && !empty($addr) && is_email( $addr ) && email_exists( $addr ) ) {
 			// filter so that a theme can prevent the confirmation email if a WP 
 			// user with that email address already exists.
 			// todo: Language support missing for filter
@@ -311,7 +324,7 @@ function post_notification_page_content() {
 			}
 		}
 
-		if ( is_email( $addr ) && post_notification_check_captcha() && post_notification_check_honeypot() ) {
+		if ( !empty($addr) && is_email( $addr ) && post_notification_check_captcha() && post_notification_check_honeypot() ) {
 			// ******************************************************** //
 			//                      SUBSCRIBE
 			// ******************************************************** //
@@ -357,7 +370,7 @@ function post_notification_page_content() {
 			}
 		}
 
-		if ( $addr != '' ) {
+		if ( !empty($addr) ) {
 			if ( ! is_email( $addr ) ) {
 				$msg .= '<p class="error">' . $post_notification_strings['check_email'] . '</p>';
 			}
@@ -367,8 +380,15 @@ function post_notification_page_content() {
 		}
 
 		//Try to get the email addr
-		if ( $addr == '' ) {
+		if ( empty($addr) ) {
 			$addr = post_notification_get_addr();
+		}
+
+		//$$fb 2024-03-15 added this (to avoid error message). Not sure if that's the right thing!
+		if ( !empty($addr) ) {
+			$vars = '<input type="hidden" name="addr" value="' . $addr . '" />';
+		} else {
+			$vars = '';
 		}
 
 		$content['header'] = get_option( 'post_notification_page_name' );
