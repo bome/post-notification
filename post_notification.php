@@ -24,29 +24,46 @@ Min WP Version: 5
 /**
  * This file has all the stuff that is really needed to initialize the plugin.
  */
-define( "POST_NOTIFICATION_PLUGIN_DIR", dirname( plugin_basename( __FILE__ ) ) );
-
-// Get the content and plugin directory paths dynamically
-$content_dir = defined( 'WP_CONTENT_DIR' ) ? trailingslashit( WP_CONTENT_DIR ) : dirname( __FILE__ ) . '/wp-content';
-$plugin_dir = defined( 'WP_PLUGIN_DIR' ) ? trailingslashit( WP_PLUGIN_DIR ) : $content_dir . '/plugins';
-
-if ( defined( "WP_PLUGIN_DIR" ) ) {
-    // WordPress 2.6 and newer allows more flexible plugin location
-    define( "POST_NOTIFICATION_PATH_REL", POST_NOTIFICATION_PLUGIN_DIR );
-    define( "POST_NOTIFICATION_PATH", $plugin_dir . '/' . POST_NOTIFICATION_PLUGIN_DIR . '/' );
-    define( "POST_NOTIFICATION_PATH_URL", plugins_url( '/', __FILE__ ) );
-    define( "POST_NOTIFICATION_DATA", $content_dir . '/post_notification/' );
-} else {
-    // Traditional approach
-    define( "POST_NOTIFICATION_DATA", $content_dir . '/post_notification/' );
-    define( "POST_NOTIFICATION_PATH_REL", POST_NOTIFICATION_PLUGIN_DIR );
-    define( "POST_NOTIFICATION_PATH", $content_dir . '/plugins/' . POST_NOTIFICATION_PLUGIN_DIR . '/' );
-    define( "POST_NOTIFICATION_PATH_URL", get_option( 'siteurl' ) . '/wp-content/plugins/' . POST_NOTIFICATION_PLUGIN_DIR . '/' );
+if ( ! defined( 'POST_NOTIFICATION_BASENAME' ) ) {
+    define( 'POST_NOTIFICATION_BASENAME', plugin_basename( __FILE__ ) ); // e.g. post-notification/post-notification.php
 }
 
-define( "post_notification_path", POST_NOTIFICATION_PATH ); // To fix some problems.
+if ( ! defined( 'POST_NOTIFICATION_PLUGIN_DIR' ) ) {
+    // Folder name only, e.g. 'post-notification'
+    define( 'POST_NOTIFICATION_PLUGIN_DIR', dirname( POST_NOTIFICATION_BASENAME ) );
+}
 
+if ( ! defined( 'POST_NOTIFICATION_PATH' ) ) {
+    // Absolute filesystem path with trailing slash
+    define( 'POST_NOTIFICATION_PATH', trailingslashit( plugin_dir_path( __FILE__ ) ) );
+}
 
+if ( ! defined( 'POST_NOTIFICATION_PATH_URL' ) ) {
+    // Absolute URL with trailing slash
+    define( 'POST_NOTIFICATION_PATH_URL', trailingslashit( plugin_dir_url( __FILE__ ) ) );
+}
+
+if ( ! defined( 'POST_NOTIFICATION_PATH_REL' ) ) {
+    // Relative path from plugins directory (used by some older APIs)
+    // Example: 'post-notification'
+    define( 'POST_NOTIFICATION_PATH_REL', POST_NOTIFICATION_PLUGIN_DIR );
+}
+
+if ( ! defined( 'POST_NOTIFICATION_CONTENT_DIR' ) ) {
+    // Content dir (filesystem path), fallback safe
+    $content_dir = defined( 'WP_CONTENT_DIR' ) ? WP_CONTENT_DIR : trailingslashit( ABSPATH ) . 'wp-content';
+    define( 'POST_NOTIFICATION_CONTENT_DIR', trailingslashit( $content_dir ) );
+}
+
+if ( ! defined( 'POST_NOTIFICATION_DATA' ) ) {
+    // Writable data dir for the plugin inside wp-content
+    define( 'POST_NOTIFICATION_DATA', POST_NOTIFICATION_CONTENT_DIR . 'post_notification/' );
+}
+
+//TODO: remove these in future versions
+if ( ! defined( 'post_notification_path' ) ) {
+    define( 'post_notification_path', POST_NOTIFICATION_PATH );
+}
 
 //Include all the helper functions
 require_once( POST_NOTIFICATION_PATH . "functions.php" );
