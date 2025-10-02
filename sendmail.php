@@ -46,75 +46,45 @@ function post_notification_create_email( $id, $template = '' ) {
 	$post_author = $post_author->display_name;
 	$post_title  = $post->post_title;
 
+	// 1) get raw content (no filters)
+	$post_content = get_post_field( 'post_content', $id );
 
-	if ( get_option( 'post_notification_show_content' ) == 'yes' ) {
-		$post_content = stripslashes( $post->post_content );
-	} elseif ( get_option( 'post_notification_show_content' ) == 'more' ) {
-		$post_content = stripslashes( $post->post_content );
-		list( $post_content, $more_content ) = split( '<!--more', $post_content );
-		if ( $more_content ) {
-			$post_content .= '<a href="@@permalink" >' . get_option( 'post_notification_read_more' ) . '</a>';
+	// 2) handle "more" option without deprecated split()
+	if ( get_option( 'post_notification_show_content' ) === 'more' ) {
+		$parts = explode( '<!--more', $post_content, 2 );
+		$post_content = $parts[0];
+		if ( ! empty( $parts[1] ) ) {
+			$post_content .= '<a href="@@permalink">' . esc_html( get_option( 'post_notification_read_more' ) ) . '</a>';
 		}
-	} elseif ( get_option( 'post_notification_show_content' ) == 'excerpt' ) {
-		if ( strlen( $post->post_excerpt ) ) {
-			$post_content = stripslashes( $post->post_excerpt );
+	}
+
+	// 3) excerpt fallback
+	if ( get_option( 'post_notification_show_content' ) === 'excerpt' ) {
+		if ( ! empty( $post->post_excerpt ) ) {
+			$post_content = $post->post_excerpt;
 		} else {
-			$words = explode( ' ', stripslashes( $post->post_content ) );
-
-			$tag    = false;
-			$wcount = 0;
-			foreach ( $words as $word ) {
-				$stag = strrpos( $word, '<' );
-				$etag = strrpos( $word, '>' );
-				if ( ! is_bool( $stag ) || ! is_bool( $etag ) ) {
-					if ( is_bool( $stag ) ) {
-						$tag = false;
-					} elseif ( is_bool( $etag ) ) {
-						$tag = true;
-					} elseif ( $stag < $etag ) {
-						$tag = false;
-					} else {
-						$tag = true;
-					}
-				}
-				if ( ! $tag ) {
-					$wcount ++;
-				}
-				if ( $wcount > 55 ) {
-					break;
-				}
-				$post_content .= $word . " ";
+			// simple 55-words excerpt, tags stripped
+			$text = wp_strip_all_tags( $post_content );
+			$words = preg_split( '/\s+/', trim( $text ) );
+			if ( count( $words ) > 55 ) {
+				$words = array_slice( $words, 0, 55 );
+				$text  = implode( ' ', $words ) . '…';
 			}
-			$post_content = balanceTags( $post_content, true );
+			$post_content = wp_kses_post( $text );
 		}
-		$post_content .= '<br /><a href="@@permalink" >' . get_option( 'post_notification_read_more' ) . '</a>';
+		$post_content .= '<br><a href="@@permalink">' . esc_html( get_option( 'post_notification_read_more' ) ) . '</a>';
 	}
 
-	// Run filters over the post
-	if ( $post_content ) {
-		//backup
-		$filter_backup = $GLOBALS['wp_filter'];
-		//Remove unwanted Filters
-		$rem_filters = get_option( 'post_notification_the_content_exclude' );
-		if ( is_string( $rem_filters ) && strlen( $rem_filters ) ) {
-			$rem_filters = unserialize( $rem_filters );
-			if ( is_array( $rem_filters ) ) {
-				foreach ( $rem_filters as $rem_filter ) {
-					// $$fb 2017-03-29: must provide 3rd parameter with the filter priority
-					// has_filter() returns the priority.
-					remove_filter( 'the_content', $rem_filter, has_filter( 'the_content', $rem_filter ) );
-				}
-			}
-		}
-		if ( ! $html_email ) {
-			//We definitely don't want smilie - Imgs in Text-Emails.
-			remove_filter( 'the_content', 'convert_smilies', has_filter( 'the_content', 'convert_smilies' ) );
-		}
-		$post_content = apply_filters( 'the_content', $post_content );
+	// 4) Remove shortcodes (so no builder/JS runs)
+	$post_content = strip_shortcodes( $post_content );
 
-		//recover for other plugins
-		$GLOBALS['wp_filter'] = $filter_backup;
-	}
+	// 5) Basic formatting: balance tags and add paragraphs
+	$post_content = wpautop( balanceTags( $post_content, true ) );
+
+
+	// 6) Sanitize to an email-friendly subset and absolutize href/src to https
+
+	$post_content = pn_email_sanitize_html( $post_content, home_url('/', 'https') );
 
 	// Do some date stuff
 	$post_date = mysql2date( get_option( 'date_format' ), $post->post_date );
@@ -153,7 +123,7 @@ function post_notification_create_email( $id, $template = '' ) {
 
 
 	//Convert from HTML to text.
-	if ( ! $html_email && isset( $post_content ) ) {
+	if ( ! $html_email && !empty( $post_content ) ) {
 		require_once( POST_NOTIFICATION_PATH . 'class.html2text.php' );
 		//$$ak: fix syntax
 		//$h2t =& new html2text($post_content);
@@ -211,6 +181,88 @@ function post_notification_create_email( $id, $template = '' ) {
 	$rv['title']   = $post_title;
 
 	return $rv;
+}
+
+
+function pn_email_sanitize_html( string $html, string $base = '' ): string {
+	// remove scripts/styles
+	$html = preg_replace( '#<(script|style)\b[^>]*>.*?</\1>#is', '', $html );
+
+	// absolutize href/src
+	$dom = new DOMDocument( '1.0', 'UTF-8' );
+	libxml_use_internal_errors( true );
+	$dom->loadHTML( '<div id="r">' . $html . '</div>', LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD );
+	$home = rtrim( $base ?: home_url( '/', 'https' ), '/' );
+
+	foreach ( [ 'a' => 'href', 'img' => 'src' ] as $tag => $attr ) {
+		foreach ( $dom->getElementsByTagName( $tag ) as $el ) {
+			if ( ! $el->hasAttribute( $attr ) ) {
+				continue;
+			}
+			$u = $el->getAttribute( $attr );
+			if ( $u === '' || $u[0] === '#' ) {
+				continue;
+			}
+			if ( strpos( $u, '//' ) === 0 ) {
+				$el->setAttribute( $attr, 'https:' . $u );
+				continue;
+			}
+			if ( ! preg_match( '#^[a-z][a-z0-9+\-.]*://#i', $u ) ) {
+				$el->setAttribute( $attr, ( $u[0] === '/' ? $home . $u : $home . '/' . ltrim( $u, '/' ) ) );
+			}
+		}
+	}
+	$root = $dom->getElementById( 'r' );
+	$out  = '';
+	if ( $root ) {
+		foreach ( $root->childNodes as $c ) {
+			$out .= $dom->saveHTML( $c );
+		}
+	}
+	libxml_clear_errors();
+
+	// allow only email-friendly tags
+	$allowed = [
+		'a'      => [ 'href' => true, 'title' => true, 'target' => true, 'rel' => true, 'style' => true ],
+		'p'      => [ 'style' => true ],
+		'br'     => [],
+		'strong' => [],
+		'em'     => [],
+		'b'      => [],
+		'i'      => [],
+		'u'      => [],
+		'span'   => [ 'style' => true ],
+		'ul'     => [ 'style' => true ],
+		'ol'     => [ 'style' => true ],
+		'li'     => [ 'style' => true ],
+		'img'    => [ 'src'    => true,
+		              'alt'    => true,
+		              'width'  => true,
+		              'height' => true,
+		              'style'  => true,
+		              'border' => true
+		],
+		'h1'     => [ 'style' => true ],
+		'h2'     => [ 'style' => true ],
+		'h3'     => [ 'style' => true ],
+		'hr'     => [ 'style' => true ],
+		'table'  => [ 'width'       => true,
+		              'cellpadding' => true,
+		              'cellspacing' => true,
+		              'border'      => true,
+		              'align'       => true,
+		              'role'        => true,
+		              'style'       => true
+		],
+		'tbody'  => [],
+		'tr'     => [],
+		'td'     => [ 'width' => true, 'align' => true, 'valign' => true, 'style' => true ],
+	];
+	$out     = wp_kses( $out, $allowed );
+	// remove empty <p>
+	$out = preg_replace( '#<p>\s*(?:&nbsp;|\xC2\xA0|\s)*</p>#i', '', $out );
+
+	return trim( $out );
 }
 
 
