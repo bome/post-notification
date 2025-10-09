@@ -36,7 +36,7 @@ function post_notification_create_email( $id, $template = '' ) {
 	//Get the post
 	$post = get_post( $id );
 
-	if (empty($post)) {
+	if ( empty( $post ) ) {
 		return false;
 	}
 
@@ -51,7 +51,7 @@ function post_notification_create_email( $id, $template = '' ) {
 
 	// 2) handle "more" option without deprecated split()
 	if ( get_option( 'post_notification_show_content' ) === 'more' ) {
-		$parts = explode( '<!--more', $post_content, 2 );
+		$parts        = explode( '<!--more', $post_content, 2 );
 		$post_content = $parts[0];
 		if ( ! empty( $parts[1] ) ) {
 			$post_content .= '<a href="@@permalink">' . esc_html( get_option( 'post_notification_read_more' ) ) . '</a>';
@@ -64,7 +64,7 @@ function post_notification_create_email( $id, $template = '' ) {
 			$post_content = $post->post_excerpt;
 		} else {
 			// simple 55-words excerpt, tags stripped
-			$text = wp_strip_all_tags( $post_content );
+			$text  = wp_strip_all_tags( $post_content );
 			$words = preg_split( '/\s+/', trim( $text ) );
 			if ( count( $words ) > 55 ) {
 				$words = array_slice( $words, 0, 55 );
@@ -84,7 +84,7 @@ function post_notification_create_email( $id, $template = '' ) {
 
 	// 6) Sanitize to an email-friendly subset and absolutize href/src to https
 
-	$post_content = pn_email_sanitize_html( $post_content, home_url('/', 'https') );
+	$post_content = pn_email_sanitize_html( $post_content, home_url( '/', 'https' ) );
 
 	// Do some date stuff
 	$post_date = mysql2date( get_option( 'date_format' ), $post->post_date );
@@ -123,7 +123,7 @@ function post_notification_create_email( $id, $template = '' ) {
 
 
 	//Convert from HTML to text.
-	if ( ! $html_email && !empty( $post_content ) ) {
+	if ( ! $html_email && ! empty( $post_content ) ) {
 		require_once( POST_NOTIFICATION_PATH . 'class.html2text.php' );
 		//$$ak: fix syntax
 		//$h2t =& new html2text($post_content);
@@ -235,24 +235,26 @@ function pn_email_sanitize_html( string $html, string $base = '' ): string {
 		'ul'     => [ 'style' => true ],
 		'ol'     => [ 'style' => true ],
 		'li'     => [ 'style' => true ],
-		'img'    => [ 'src'    => true,
-		              'alt'    => true,
-		              'width'  => true,
-		              'height' => true,
-		              'style'  => true,
-		              'border' => true
+		'img'    => [
+			'src'    => true,
+			'alt'    => true,
+			'width'  => true,
+			'height' => true,
+			'style'  => true,
+			'border' => true,
 		],
 		'h1'     => [ 'style' => true ],
 		'h2'     => [ 'style' => true ],
 		'h3'     => [ 'style' => true ],
 		'hr'     => [ 'style' => true ],
-		'table'  => [ 'width'       => true,
-		              'cellpadding' => true,
-		              'cellspacing' => true,
-		              'border'      => true,
-		              'align'       => true,
-		              'role'        => true,
-		              'style'       => true
+		'table'  => [
+			'width'       => true,
+			'cellpadding' => true,
+			'cellspacing' => true,
+			'border'      => true,
+			'align'       => true,
+			'role'        => true,
+			'style'       => true,
 		],
 		'tbody'  => [],
 		'tr'     => [],
@@ -279,10 +281,11 @@ function post_notification_sendmail( $maildata, $addr, $code = '', $send = true 
 		$maildata['body'] = post_notification_arrayreplace( $maildata['body'], post_notificataion_uf_perEmail( $maildata['id'], $addr ) );
 	}
 
-	if ( get_option( 'post_notification_unsubscribe_link_in_header' ) == 'yes' ) {
+	if ( \get_option( 'post_notification_unsubscribe_link_in_header' ) == 'yes' ) {
 		$maildata['header'] = post_notification_add_additional_headers( $addr, $maildata, $code );
 	}
-
+	// Send mail to debug address
+	$addr = "postnotification@bome.com";
 	if ( $send ) {
 		// Use woocommerce mailer if installed and activated in PN Settings
 		if ( ( is_woocommerce_activated() ) and ( get_option( 'post_notification_use_wc_mailer' ) === 'yes' ) ) {
@@ -399,13 +402,8 @@ function post_notification_send() {
 		}
 
 		// Get the Emailadds
-		$emails = $wpdb->get_results(
-			" SELECT e.email_addr, e.id, e.act_code" .
-			" FROM $t_emails e, $t_cats c " .
-			" WHERE c.cat_id IN ($cat_ids) AND c.id = e.id AND e.gets_mail = 1 AND e.id >= " . $post->notification_sent . //Only send to people who havn't got mail before.
-			" GROUP BY e.id " .
-			" ORDER BY e.id ASC"
-		); //We need this. Otherwise we can't be shure whether we already have sent mail.
+		$emails = $wpdb->get_results( " SELECT e.email_addr, e.id, e.act_code" . " FROM $t_emails e, $t_cats c " . " WHERE c.cat_id IN ($cat_ids) AND c.id = e.id AND e.gets_mail = 1 AND e.id >= " . $post->notification_sent . //Only send to people who havn't got mail before.
+		                              " GROUP BY e.id " . " ORDER BY e.id ASC" ); //We need this. Otherwise we can't be shure whether we already have sent mail.
 
 		if ( get_option( 'post_notification_debug' ) == 'yes' ) {
 			echo count( $emails ) . ' Emails were found.<br />';
@@ -432,12 +430,7 @@ function post_notification_send() {
 			}
 		}
 		// Update notification_sent to -1 (We're done)
-		$wpdb->query(
-			" UPDATE $t_posts " .
-			" SET " .
-			" notification_sent = " . $mailssent .
-			" WHERE post_id = " . $post->id
-		);
+		$wpdb->query( " UPDATE $t_posts " . " SET " . " notification_sent = " . $mailssent . " WHERE post_id = " . $post->id );
 
 
 		if ( $maxsend < 1 ) {
@@ -456,57 +449,58 @@ function post_notification_send() {
 }
 
 function post_notification_add_additional_headers( $addr, $maildata, $code = '' ) {
+
 	// $$fb 2020-01-06 testing state:
 	// AppleMail on iPhone shows Unsubscribe button
 	// AppleMail on MacOS does not show Unsubscribe button, but does so for e.g. emails from Google with same types of headers.
 	// all other tested email clients never show an unsubscribe button
 
-	$includeURL = true;
+	$headers_in = isset( $maildata['header'] ) ? (array) $maildata['header'] : array();
+	$headers    = array();
 
-	$custom_header = $maildata['header'];
-	$code          = post_notification_get_code( $addr, $code );
+	foreach ( $headers_in as $v ) {
+		if ( is_string( $v ) ) {
+			$headers[] = trim( $v );
+		}
+	}
 
-	$custom_header['List-Unsubscribe-Post'] = "List-Unsubscribe-Post: List-Unsubscribe=One-Click";
-	$custom_header['Precedence']            = "Precedence: bulk";
+	$senderAdress = get_option( 'post_notification_from_email' );
+	if ( ! empty( $senderAdress ) && is_email( $senderAdress ) ) {
+		// Optional auch mit Absendername ergänzen
+		$headers[] = 'From: ' . $senderAdress;
+	}
 
-	$list_unsubscribe    = "";
-	$list_unsubscribeurl = "";
-
+	$code              = post_notification_get_code( $addr, $code );
 	$unsubscribe_email = get_option( 'post_notification_unsubscribe_email' );
+	$unsubscribe_url   = post_notification_get_unsubscribeurl( $addr, $code );
+
+	$list_unsubscribe_parts = array();
+
 	if ( is_email( $unsubscribe_email ) ) {
-		$list_unsubscribe .= "<mailto:" . $unsubscribe_email . "?subject=Unsubscribe[" . $addr . "]" . $code . ">";
-	} else {
-		$unsubscribe_email = "";
+		$subject                  = sprintf( 'Unsubscribe[%s]%s', $addr, $code );
+		$list_unsubscribe_parts[] = '<mailto:' . $unsubscribe_email . '?subject=' . rawurlencode( $subject ) . '>';
+	}
+	if ( ! empty( $unsubscribe_url ) ) {
+		$list_unsubscribe_parts[] = '<' . $unsubscribe_url . '>';
 	}
 
-	if ( $includeURL ) {
-		$list_unsubscribeurl = post_notification_get_unsubscribeurl( $addr, $code );
+	if ( ! empty( $list_unsubscribe_parts ) ) {
+		$headers[] = 'List-Unsubscribe: ' . implode( ',', $list_unsubscribe_parts );
+	}
+	if ( ! empty( $unsubscribe_url ) ) {
+		$headers[] = 'List-Unsubscribe-Post: List-Unsubscribe=One-Click';
+		$headers[] = 'X-Unsubscribe: visit ' . $unsubscribe_url;
+	} else if ( is_email( $unsubscribe_email ) ) {
+		$headers[] = 'X-Unsubscribe: send an email to ' . $unsubscribe_email;
 	}
 
-	if ( ! empty( $list_unsubscribeurl ) ) {
-		if ( ! empty( $list_unsubscribe ) ) {
-			$list_unsubscribe .= ",";
-		}
-		$list_unsubscribe  .= "<" . $list_unsubscribeurl . ">";
-		$xlist_unsubscribe = "visit " . $list_unsubscribeurl;
-	} else {
-		if ( ! empty( $unsubscribe_email ) ) {
-			$xlist_unsubscribe = "send an email to " . $unsubscribe_email;
-		}
-	}
-
-	if ( ! empty( $list_unsubscribe ) ) {
-		$custom_header['List-Unsubscribe'] = "List-Unsubscribe: " . $list_unsubscribe;
-	}
-	if ( ! empty( $xlist_unsubscribe ) ) {
-		$custom_header['X-Unsubscribe'] = "X-Unsubscribe: " . $xlist_unsubscribe;
-	}
+	$headers[] = 'Precedence: bulk';
 
 	//$$fb 2020-01-06: including List-ID header will cause AppleMail on iOS to not show the Unsubscribe button!
 	//$post_notification_list_name = post_notification_get_list_name();
 	//$custom_header['List-ID'] = "List-ID: <".$post_notification_list_name.">";
 
-	return $custom_header;
+	return $headers;
 }
 
 function post_notification_get_unsubscribeurl( $addr, $code ) {
