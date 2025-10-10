@@ -117,7 +117,7 @@ function post_notification_admin_sub() {
         }
         $sortorder = filter_input( INPUT_POST, 'sortorder', FILTER_SANITIZE_SPECIAL_CHARS );
         if ( $sortorder === null or $sortorder === false ) {
-            $sortorder = 'ASC';
+            $sortorder = 'DESC';
         }
 
         $sortsrt = trim($sortby) ." " . trim($sortorder);
@@ -154,8 +154,8 @@ function post_notification_admin_sub() {
              '<option value="subscribe_ip" ' . ( ( $sortby === 'subscribe_ip' ) ? 'selected="selected"' : '' ) . '>' . __( 'IP', 'post_notification' ) . '</option>' .
              '</select>';
         echo ' <select name="sortorder"  size = "1" > ' .
-             '<option value="ASC" ' . ( ( $sortorder === 'ASC' ) ? 'selected="selected"' : '' ) . '>' . __( 'Ascending', 'post_notification' ) . '</option>' .
              '<option value="DESC" ' . ( ( $sortorder === 'DESC' ) ? 'selected="selected"' : '' ) . '>' . __( 'Descending', 'post_notification' ) . '</option>' .
+             '<option value="ASC" ' . ( ( $sortorder === 'ASC' ) ? 'selected="selected"' : '' ) . '>' . __( 'Ascending', 'post_notification' ) . '</option>' .
              '</select>';
 
         echo '<BR  /> ';
