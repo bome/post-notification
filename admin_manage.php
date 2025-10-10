@@ -10,21 +10,34 @@
 require_once( "ldif2array.class.php" );
 
 function ldif2addresses( $input ) {
-	$ld     = new ldif2array( $input );
-	$retval = '';
-	if ( $ld->makeArray() ) {
-		foreach ( $ld->getArray() as $a ) {
-			$retval .= $a['mail'] . ',';
-		}
-	}
+    // Validate file path
+    if ( ! is_readable( $input ) ) {
+        return '';
+    }
 
-	return $retval;
+    $ld     = new ldif2array( $input );
+    $retval = '';
+    if ( $ld->makeArray() ) {
+        foreach ( $ld->getArray() as $a ) {
+            if ( isset( $a['mail'] ) && is_email( $a['mail'] ) ) {
+                $retval .= sanitize_email( $a['mail'] ) . ',';
+            }
+        }
+    }
+
+    return $retval;
 }
 
 function post_notification_admin_sub() {
-	echo '<h3>' . __( 'Manage addresses', 'post_notification' ) . '</h3>';
-	if ( empty( $_POST['manage'] ) ) {
-		?>
+    // Security checks
+    if ( ! current_user_can( 'manage_options' ) ) {
+        wp_die( __( 'You do not have sufficient permissions to access this page.', 'post_notification' ) );
+    }
+
+    echo '<h3>' . __( 'Manage addresses', 'post_notification' ) . '</h3>';
+
+    if ( empty( $_POST['manage'] ) ) {
+        ?>
         <p> <?php _e( 'The Emails may be seprated by newline, space, comma, semi colon, tabs, [, ], &lt; or &gt;.', 'post_notification' ); ?>
             <br/>
             <b><?php _e( 'Watch out! There is only simple checking whether the email address is valid.', 'post_notification' ); ?> </b>
@@ -33,21 +46,42 @@ function post_notification_admin_sub() {
         <!-- The data encoding type, enctype, MUST be specified as below -->
         <form enctype="multipart/form-data" action="admin.php?page=post_notification/admin.php&amp;action=manage"
               method="POST">
-			<?php _e( 'Load LDIF-File:', 'post_notification' ); ?>
-            <input name="ldif_file" type="file"/>
+            <?php wp_nonce_field( 'post_notification_ldif_import', 'post_notification_ldif_nonce' ); ?>
+            <?php _e( 'Load LDIF-File:', 'post_notification' ); ?>
+            <input name="ldif_file" type="file" accept=".ldif"/>
             <input type="submit" value="<?php _e( 'Load', 'post_notification' ); ?>" name="ldif_import"/>
         </form>
 
         <form name="import" action="admin.php?page=post_notification/admin.php&amp;action=manage" method="post">
+            <?php wp_nonce_field( 'post_notification_manage_addresses', 'post_notification_manage_nonce' ); ?>
             <b><?php _e( 'Emails', 'post_notification' ); ?>:</b>
             <br/>
             <textarea name="imp_emails" cols="60" rows="10" class="commentBox"><?php
-	            if ( ! empty( $_POST['ldif_import'] ) and $_POST['ldif_import'] ) {
-		            echo ldif2addresses( $_FILES['ldif_file']['tmp_name'] );
-	            } ?></textarea>
+                if ( isset( $_POST['ldif_import'] ) && $_POST['ldif_import'] ) {
+                    // Verify nonce for LDIF import
+                    if ( isset( $_POST['post_notification_ldif_nonce'] ) &&
+                         wp_verify_nonce( $_POST['post_notification_ldif_nonce'], 'post_notification_ldif_import' ) ) {
+
+                        // Validate file upload
+                        if ( isset( $_FILES['ldif_file'] ) &&
+                             $_FILES['ldif_file']['error'] === UPLOAD_ERR_OK ) {
+
+                            // Check file extension
+                            $file_name = $_FILES['ldif_file']['name'];
+                            $file_ext = strtolower( pathinfo( $file_name, PATHINFO_EXTENSION ) );
+
+                            if ( $file_ext === 'ldif' ) {
+                                echo esc_textarea( ldif2addresses( $_FILES['ldif_file']['tmp_name'] ) );
+                            } else {
+                                echo esc_html__( 'Invalid file type. Only .ldif files are allowed.', 'post_notification' );
+                            }
+                        }
+                    }
+                }
+                ?></textarea>
             <br/><br/>
 
-			<?php _e( 'What should be done?', 'post_notification' ); ?><br/>
+            <?php _e( 'What should be done?', 'post_notification' ); ?><br/>
             <input type="radio" name="logic" value="add"
                    checked="checked"><?php _e( 'Add selected categories', 'post_notification' ); ?></input><br/>
             <input type="radio" name="logic"
@@ -56,96 +90,143 @@ function post_notification_admin_sub() {
                    value="repl"><?php _e( 'Replace with selected categories', 'post_notification' ); ?></input><br/>
             <input type="radio" name="logic"
                    value="del"><?php _e( 'Unsubscribe/Delete the listed emails', 'post_notification' ); ?></input><br/>
-			<?php
-			$selected_cats = explode( ',', get_option( 'post_notification_selected_cats' ) );
-			echo post_notification_get_catselect( '', $selected_cats ); ?>
+            <?php
+            $selected_cats = explode( ',', get_option( 'post_notification_selected_cats' ) );
+            echo post_notification_get_catselect( '', $selected_cats ); ?>
             <input type="submit" name="manage" value="<?php _e( 'Manage', 'post_notification' ); ?>"
                    class="commentButton"/>
             <input type="reset" name="Reset" value="<?php _e( 'Reset', 'post_notification' ); ?>"
                    class="commentButton"/><br/><br/><br/>
         </form>
-		<?php
-	} else {
-		global $wpdb;
-		$t_emails = $wpdb->prefix . 'post_notification_emails';
-		$t_cats   = $wpdb->prefix . 'post_notification_cats';
+        <?php
+    } else {
+        // Verify nonce for manage action
+        if ( ! isset( $_POST['post_notification_manage_nonce'] ) ||
+             ! wp_verify_nonce( $_POST['post_notification_manage_nonce'], 'post_notification_manage_addresses' ) ) {
+            wp_die( __( 'Security check failed.', 'post_notification' ) );
+        }
 
+        global $wpdb;
+        $t_emails = $wpdb->prefix . 'post_notification_emails';
+        $t_cats   = $wpdb->prefix . 'post_notification_cats';
 
-		$import_array = preg_split( '/[\s\n\[\]<>\t,;]+/', $_POST['imp_emails'], - 1, PREG_SPLIT_NO_EMPTY );
+        // Validate and sanitize logic parameter
+        $allowed_logic = array( 'add', 'rem', 'repl', 'del' );
+        $logic = isset( $_POST['logic'] ) ? sanitize_text_field( $_POST['logic'] ) : 'add';
 
-		foreach ( $import_array as $addr ) {
-			// Set Variables //
-			$gets_mail = 1;
-			$now       = post_notification_date2mysql();
+        if ( ! in_array( $logic, $allowed_logic, true ) ) {
+            $logic = 'add';
+        }
 
-			// Basic checking
-			if ( ! is_email( $addr ) ) {
-				if ( ! $addr == "" ) {
-					echo '<div class="error">' . __( 'Email is not valid:', 'post_notification' ) . " $addr</div>";
-				}
-				continue;
-			}
-			//*************************************/
-			//*    Check database for duplicates  */
-			//*************************************/
+        // Get and validate categories
+        $pn_cats = isset( $_POST['pn_cats'] ) && is_array( $_POST['pn_cats'] ) ? $_POST['pn_cats'] : array();
+        $sanitized_cats = array();
+        foreach ( $pn_cats as $cat ) {
+            if ( is_numeric( $cat ) ) {
+                $sanitized_cats[] = absint( $cat );
+            }
+        }
 
-			$mid = $wpdb->get_var( "SELECT id FROM $t_emails WHERE email_addr = '$addr'" );
+        // Get and validate email addresses
+        $import_emails = isset( $_POST['imp_emails'] ) ? $_POST['imp_emails'] : '';
+        $import_array = preg_split( '/[\s\n\[\]<>\t,;]+/', $import_emails, - 1, PREG_SPLIT_NO_EMPTY );
 
-			if ( $_POST['logic'] === 'del' ) {
-				if ( $mid != '' ) {
-					$wpdb->query( "DELETE FROM $t_emails WHERE id = $mid" );
-					$wpdb->query( "DELETE FROM $t_cats WHERE id = $mid" );
-					echo "<div>" . __( 'Removed email:', 'post_notification' ) . " $addr</div>";
-				} else {
-					echo '<div class="error">' . __( 'Email is not in DB:', 'post_notification' ) . " $addr</div>";
-				}
-				continue;
-			}
+        foreach ( $import_array as $addr ) {
+            // Sanitize email
+            $addr = sanitize_email( $addr );
 
+            // Skip empty addresses
+            if ( empty( $addr ) ) {
+                continue;
+            }
 
-			//Let's create an entry
+            // Validate email
+            if ( ! is_email( $addr ) ) {
+                echo '<div class="error">' . esc_html__( 'Email is not valid:', 'post_notification' ) . ' ' . esc_html( $addr ) . '</div>';
+                continue;
+            }
 
-			if ( ! $mid ) {
-				$wpdb->query(
-					"INSERT " . $t_emails .
-					" (email_addr, gets_mail, last_modified, date_subscribed) " .
-					" VALUES ('$addr', '$gets_mail', '$now', '$now')"
-				);
-				echo "<div>" . __( 'Added Email:', 'post_notification' ) . " $addr</div>";
-				$mid = $wpdb->get_var( "SELECT id FROM $t_emails WHERE email_addr = '$addr'" );
-			}
+            // Set Variables
+            $gets_mail = 1;
+            $now       = post_notification_date2mysql();
 
+            // Check database for existing email - SECURE with prepared statement
+            $mid = $wpdb->get_var( $wpdb->prepare(
+                    "SELECT id FROM $t_emails WHERE email_addr = %s",
+                    $addr
+            ) );
 
-			if ( $mid == '' ) {
-				echo '<div>' . __( 'Something went wrong with the Email:', 'post_notification' ) . $addr . '</div>';
-				continue;
-			}
+            // Handle delete logic
+            if ( $logic === 'del' ) {
+                if ( $mid ) {
+                    $wpdb->delete( $t_emails, array( 'id' => $mid ), array( '%d' ) );
+                    $wpdb->delete( $t_cats, array( 'id' => $mid ), array( '%d' ) );
+                    echo '<div>' . esc_html__( 'Removed email:', 'post_notification' ) . ' ' . esc_html( $addr ) . '</div>';
+                } else {
+                    echo '<div class="error">' . esc_html__( 'Email is not in DB:', 'post_notification' ) . ' ' . esc_html( $addr ) . '</div>';
+                }
+                continue;
+            }
 
+            // Create entry if doesn't exist
+            if ( ! $mid ) {
+                $wpdb->insert(
+                        $t_emails,
+                        array(
+                                'email_addr'      => $addr,
+                                'gets_mail'       => $gets_mail,
+                                'last_modified'   => $now,
+                                'date_subscribed' => $now
+                        ),
+                        array( '%s', '%d', '%s', '%s' )
+                );
+                echo '<div>' . esc_html__( 'Added Email:', 'post_notification' ) . ' ' . esc_html( $addr ) . '</div>';
 
-			if ( $_POST['logic'] === 'repl' ) {
-				$wpdb->query( "DELETE FROM $t_cats WHERE id = $mid" );
-			}
+                $mid = $wpdb->get_var( $wpdb->prepare(
+                        "SELECT id FROM $t_emails WHERE email_addr = %s",
+                        $addr
+                ) );
+            }
 
+            // Verify we have a valid ID
+            if ( ! $mid ) {
+                echo '<div class="error">' . esc_html__( 'Something went wrong with the Email:', 'post_notification' ) . ' ' . esc_html( $addr ) . '</div>';
+                continue;
+            }
 
-			$pn_cats = $_POST['pn_cats'];
+            // Handle replace logic - delete existing categories
+            if ( $logic === 'repl' ) {
+                $wpdb->delete( $t_cats, array( 'id' => $mid ), array( '%d' ) );
+            }
 
-			if ( ! is_array( $pn_cats ) ) {
-				$pn_cats = array();
-			} //Just to make sure it doesn't crash
+            // Process categories
+            foreach ( $sanitized_cats as $cat ) {
+                if ( $logic === 'rem' ) {
+                    // Remove category
+                    $wpdb->delete(
+                            $t_cats,
+                            array( 'id' => $mid, 'cat_id' => $cat ),
+                            array( '%d', '%d' )
+                    );
+                } else {
+                    // Add category if not exists
+                    $exists = $wpdb->get_var( $wpdb->prepare(
+                            "SELECT id FROM $t_cats WHERE id = %d AND cat_id = %d",
+                            $mid,
+                            $cat
+                    ) );
 
-			//Let's see what cats we have
-			foreach ( $pn_cats as $cat ) {
-				if ( is_numeric( $cat ) ) { //Security
-					if ( $_POST['logic'] === 'rem' ) {
-						$wpdb->query( "DELETE FROM $t_cats WHERE id = $mid AND cat_id = $cat" );
-					} else {
-						if ( ! $wpdb->get_var( "SELECT id FROM $t_cats WHERE id = $mid AND cat_id = $cat" ) ) {
-							$wpdb->query( "INSERT INTO $t_cats (id, cat_id) VALUES($mid, $cat)" );
-						}
-					}
-				}
-			}
-			echo '<div>' . __( 'Updated Email:', 'post_notification' ) . " $addr</div>";
-		} //end foreach
-	}
+                    if ( ! $exists ) {
+                        $wpdb->insert(
+                                $t_cats,
+                                array( 'id' => $mid, 'cat_id' => $cat ),
+                                array( '%d', '%d' )
+                        );
+                    }
+                }
+            }
+
+            echo '<div>' . esc_html__( 'Updated Email:', 'post_notification' ) . ' ' . esc_html( $addr ) . '</div>';
+        } // end foreach
+    }
 }
