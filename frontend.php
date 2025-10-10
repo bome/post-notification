@@ -148,6 +148,11 @@ function post_notification_page_content() {
 	$t_cats   = $wpdb->prefix . 'post_notification_cats';
 
 	$from_email = get_option( 'post_notification_from_email' );
+	if (empty($from_email)) {
+		//take the blog's admin email
+		$from_email = get_option( 'admin_email' );
+	}
+
 	$pnurl      = post_notification_get_link();
 	if ( get_option( 'post_notification_hdr_nl' ) === "rn" ) {
 		$hdr_nl = "\r\n";
