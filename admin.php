@@ -32,8 +32,19 @@ function post_notification_admin_page() {
 
 		return;
 	}
-	?>
 
+
+    // Check if this is a CSV export request - handle BEFORE any output
+    if ( isset( $_GET['action'] ) && $_GET['action'] === 'export_csv' ) {
+    // Include the CSV export file
+    require_once( 'admin_export_csv.php' );
+    // Call the function that handles the export
+    post_notification_admin_sub();
+    // Exit to prevent any other output
+    return;
+    }
+
+    ?>
     <div id="pn_admin_menu">
         <ul>
             <li><a href="admin.php?page=post_notification/admin.php"> <?php _e( 'Info', 'post_notification' ) ?></a>
