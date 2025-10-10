@@ -43,16 +43,7 @@ function post_notification_admin_sub() {
             <b><?php _e( 'Watch out! There is only simple checking whether the email address is valid.', 'post_notification' ); ?> </b>
         </p>
 
-        <!-- The data encoding type, enctype, MUST be specified as below -->
-        <form enctype="multipart/form-data" action="admin.php?page=post_notification/admin.php&amp;action=manage"
-              method="POST">
-            <?php wp_nonce_field( 'post_notification_ldif_import', 'post_notification_ldif_nonce' ); ?>
-            <?php _e( 'Load LDIF-File:', 'post_notification' ); ?>
-            <input name="ldif_file" type="file" accept=".ldif"/>
-            <input type="submit" value="<?php _e( 'Load', 'post_notification' ); ?>" name="ldif_import"/>
-        </form>
-
-        <form name="import" action="admin.php?page=post_notification/admin.php&amp;action=manage" method="post">
+         <form name="import" action="admin.php?page=post_notification/admin.php&amp;action=manage" method="post">
             <?php wp_nonce_field( 'post_notification_manage_addresses', 'post_notification_manage_nonce' ); ?>
             <b><?php _e( 'Emails', 'post_notification' ); ?>:</b>
             <br/>
