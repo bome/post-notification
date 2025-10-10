@@ -122,13 +122,9 @@ function post_notification_create_email( $id, $template = '' ) {
 	$post_title = strip_tags( $post_title );
 
 
-	//Convert from HTML to text.
+	// Convert from HTML to text for plain text emails
 	if ( ! $html_email && ! empty( $post_content ) ) {
-		require_once( POST_NOTIFICATION_PATH . 'class.html2text.php' );
-		//$$ak: fix syntax
-		//$h2t =& new html2text($post_content);
-		$h2t          = new html2text( $post_content );
-		$post_content = $h2t->get_text();
+		$post_content = post_notification_html_to_text( $post_content );
 	}
 
 	// Load template

@@ -40,161 +40,212 @@ class captcha {
 	 *
 	 * @return unknown
 	 */
-	public function get_pic( $num_chars = 8 ) {
-		// define characters of which the captcha can consist
-		$alphabet = array(
-			'A',
-			'B',
-			'C',
-			'D',
-			'E',
-			'F',
-			'G',
-			'H',
-			'I',
-			'J',
-			'K',
-			'L',
-			'M',
-			'N',
-			'O',
-			'P',
-			'Q',
-			'R',
-			'S',
-			'T',
-			'U',
-			'V',
-			'W',
-			'X',
-			'Y',
-			'Z',
-			'1',
-			'2',
-			'3',
-			'4',
-			'5',
-			'6',
-			'7',
-			'8',
-			'9',
-			'0'
-		);
+    /**
+     * Returns name of the new generated captcha image file
+     *
+     * @param int $num_chars Number of characters in captcha
+     * @return string|false Hash of captcha or false on failure
+     */
+    public function get_pic( $num_chars = 8 ) {
+        // Define characters for captcha - exclude similar looking characters
+        // Removed: 0 (zero), O (letter o), I (letter i), 1 (one), l (lowercase L)
+        // to improve readability and reduce user frustration
+        $alphabet = array(
+                'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'J', 'K',
+                'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'U', 'V',
+                'W', 'X', 'Y', 'Z',
+                '2', '3', '4', '5', '6', '7', '8', '9'
+        );
 
-		$max = sizeof( $alphabet );
+        $max = count( $alphabet );
 
-		// generate random string
-		$captcha_str = '';
-		for ( $i = 1; $i <= $num_chars; $i ++ ) { // from 1..$num_chars
-			// choose randomly a character from alphabet and append it to string
-			$chosen      = rand( 1, $max );
-			$captcha_str .= $alphabet[ $chosen - 1 ];
-		}
+        // Generate random string
+        $captcha_str = '';
+        for ( $i = 1; $i <= $num_chars; $i++ ) {
+            // Choose randomly a character from alphabet and append it to string
+            $chosen = rand( 0, $max - 1 ); // Use 0-based index
+            $captcha_str .= $alphabet[ $chosen ];
+        }
 
-		// generate a picture file that displays the random string
-		//error_log("captcha: " . $this->temp_dir . '/' . 'cap_' . md5( strtolower( $captcha_str ) ) . '.jpg' . " " . $captcha_str);
+        // Generate a picture file that displays the random string
+        $captcha_hash = md5( strtolower( $captcha_str ) );
+        $image_path = $this->temp_dir . '/cap_' . $captcha_hash . '.jpg';
 
-		if ( $this->_generate_image( $this->temp_dir . '/' . 'cap_' . md5( strtolower( $captcha_str ) ) . '.jpg', $captcha_str ) ) {
-			$fh = fopen( $this->temp_dir . '/' . 'cap_' . $this->session_key . '.txt', "w" );
-			chmod( $this->temp_dir . '/' . 'cap_' . $this->session_key . '.txt', 0777 );
-			fputs( $fh, md5( strtolower( $captcha_str ) ) );
+        if ( $this->_generate_image( $image_path, $captcha_str ) ) {
+            $hash_file = $this->temp_dir . '/cap_' . $this->session_key . '.txt';
+            $fh = fopen( $hash_file, 'w' );
 
-			return ( md5( strtolower( $captcha_str ) ) );
-		} else {
-			return false;
-		}
-	}
+            if ( ! $fh ) {
+                return false;
+            }
 
-	/**
-	 * Generates Image file for captcha
-	 *
-	 * @param string $location
-	 * @param string $char_seq
-	 *
-	 * @return unknown
-	 */
-	public function _generate_image( $location, $char_seq ) {
-		$num_chars = strlen( $char_seq );
+            chmod( $hash_file, 0644 ); // More secure than 0777
+            fputs( $fh, $captcha_hash );
+            fclose( $fh );
 
-		$img = imagecreatetruecolor( $this->width, $this->height );
-		imagealphablending( $img, 1 );
-		imagecolortransparent( $img );
+            return $captcha_hash;
+        }
 
-		// generate background of randomly built ellipses
-		for ( $i = 1; $i <= 200; $i ++ ) {
-			$r     = round( rand( 0, 100 ) );
-			$g     = round( rand( 0, 100 ) );
-			$b     = round( rand( 0, 100 ) );
-			$color = imagecolorallocate( $img, $r, $g, $b );
-			imagefilledellipse( $img, round( rand( 0, $this->width ) ), round( rand( 0, $this->height ) ), round( rand( 0, $this->width / 16 ) ), round( rand( 0, $this->height / 4 ) ), $color );
-		}
+        return false;
+    }
 
-		$start_x       = round( $this->width / $num_chars );
-		$max_font_size = $start_x;
-		$start_x       = round( 0.5 * $start_x );
-		$max_x_ofs     = round( $max_font_size * 0.9 );
+    /**
+     * Generates Image file for captcha
+     *
+     * @param string $location File path for captcha image
+     * @param string $char_seq Character sequence to display
+     * @return bool Success status
+     */
+    public function _generate_image( $location, $char_seq ) {
+        // Validate temp directory
+        if ( ! is_dir( $this->temp_dir ) || ! is_writable( $this->temp_dir ) ) {
+            error_log( 'Captcha: temp directory not writable: ' . $this->temp_dir );
+            return false;
+        }
 
-		// set each letter with random angle, size and color
-		for ( $i = 0; $i <= $num_chars; $i ++ ) {
-			$r     = round( rand( 127, 255 ) );
-			$g     = round( rand( 127, 255 ) );
-			$b     = round( rand( 127, 255 ) );
-			$y_pos = ( $this->height / 2 ) + round( rand( 5, 20 ) );
+        $num_chars = strlen( $char_seq );
 
-			$fontsize = round( rand( 18, $max_font_size ) );
-			$color    = imagecolorallocate( $img, $r, $g, $b );
-			$presign  = round( rand( 0, 1 ) );
-			$angle    = round( rand( 0, 25 ) );
-			if ( $presign == true ) {
-				$angle = - 1 * $angle;
-			}
-			$fontpath = dirname( __FILE__ ) . '/';
-			ImageTTFText( $img, $fontsize, $angle, $start_x + $i * $max_x_ofs, $y_pos, $color, $fontpath . 'default.ttf', substr( $char_seq, $i, 1 ) );
-		}
+        $img = imagecreatetruecolor( $this->width, $this->height );
 
-		// create image file
-		imagejpeg( $img, $location, $this->jpg_quality );
-		chmod( $location, 0777 );
-		flush();
-		imagedestroy( $img );
+        if ( ! $img ) {
+            error_log( 'Captcha: Failed to create image' );
+            return false;
+        }
 
-		// clean up
-		$tmp_dir = dir( $this->temp_dir );
+        imagealphablending( $img, 1 );
+        imagecolortransparent( $img );
 
-		while ( $entry = $tmp_dir->read() ) {
-			if ( strpos( $entry, 'cap_' ) !== false ) {
-				$del_file = $this->temp_dir . '/' . $entry;
-				if ( is_file( $del_file ) ) {
-					if ( time() - filemtime( $del_file ) > 360 ) { //5 min
-						unlink( $del_file );
-					}
-				}
-			}
-		}
+        // Generate background of randomly built ellipses
+        for ( $i = 1; $i <= 200; $i++ ) {
+            $r = rand( 0, 100 );
+            $g = rand( 0, 100 );
+            $b = rand( 0, 100 );
+            $color = imagecolorallocate( $img, $r, $g, $b );
+            imagefilledellipse(
+                    $img,
+                    rand( 0, $this->width ),
+                    rand( 0, $this->height ),
+                    rand( 0, (int)( $this->width / 16 ) ),
+                    rand( 0, (int)( $this->height / 4 ) ),
+                    $color
+            );
+        }
 
+        $start_x = (int)( $this->width / $num_chars );
+        $max_font_size = $start_x;
+        $start_x = (int)( 0.5 * $start_x );
+        $max_x_ofs = (int)( $max_font_size * 0.9 );
 
-		return true;
-	}
+        // Verify font file exists
+        $fontpath = dirname( __FILE__ ) . '/default.ttf';
+        if ( ! file_exists( $fontpath ) ) {
+            error_log( 'Captcha: Font file not found: ' . $fontpath );
+            imagedestroy( $img );
+            return false;
+        }
 
-	/**
-	 * check hash of password against hash of searched characters
-	 *
-	 * @param string $char_seq
-	 *
-	 * @return boolean
-	 */
-	public function verify( $char_seq ) {
-		$file = $this->temp_dir . '/' . 'cap_' . $this->session_key . '.txt';
-		if ( ! file_exists( $file ) ) {
-			return false;
-		}
-		$fh   = fopen( $file, "r" );
-		$hash = fgets( $fh );
+        // Set each letter with random angle, size and color
+        for ( $i = 0; $i < $num_chars; $i++ ) { // Changed to < instead of <=
+            $r = rand( 127, 255 );
+            $g = rand( 127, 255 );
+            $b = rand( 127, 255 );
+            $y_pos = (int)( ( $this->height / 2 ) + rand( 5, 20 ) );
 
-		if ( md5( strtolower( $char_seq ) ) == $hash ) {
-			return true;
-		} else {
-			return false;
-		}
-	}
+            $fontsize = rand( 18, $max_font_size );
+            $color = imagecolorallocate( $img, $r, $g, $b );
+            $angle = rand( -25, 25 ); // Simplified angle generation
+
+            imagettftext(
+                    $img,
+                    $fontsize,
+                    $angle,
+                    $start_x + $i * $max_x_ofs,
+                    $y_pos,
+                    $color,
+                    $fontpath,
+                    substr( $char_seq, $i, 1 )
+            );
+        }
+
+        // Create image file
+        $result = imagejpeg( $img, $location, $this->jpg_quality );
+
+        if ( $result ) {
+            chmod( $location, 0644 ); // More secure permissions
+        }
+
+        imagedestroy( $img );
+
+        // Clean up old captcha files (older than 6 minutes)
+        $this->_cleanup_old_files();
+
+        return $result;
+    }
+
+    /**
+     * Clean up old captcha files
+     */
+    private function _cleanup_old_files() {
+        if ( ! is_dir( $this->temp_dir ) || ! is_readable( $this->temp_dir ) ) {
+            return;
+        }
+
+        $tmp_dir = dir( $this->temp_dir );
+
+        if ( ! $tmp_dir ) {
+            return;
+        }
+
+        $current_time = time();
+        $max_age = 360; // 6 minutes
+
+        while ( false !== ( $entry = $tmp_dir->read() ) ) {
+            // Only process captcha files
+            if ( strpos( $entry, 'cap_' ) !== 0 ) {
+                continue;
+            }
+
+            $file_path = $this->temp_dir . '/' . $entry;
+
+            // Verify it's a file and within our temp directory
+            if ( ! is_file( $file_path ) ) {
+                continue;
+            }
+
+            // Delete if older than max_age
+            if ( $current_time - filemtime( $file_path ) > $max_age ) {
+                @unlink( $file_path );
+            }
+        }
+
+        $tmp_dir->close();
+    }
+
+    /**
+     * Check hash of password against hash of searched characters
+     *
+     * @param string $char_seq User input to verify
+     * @return bool True if captcha is correct
+     */
+    public function verify( $char_seq ) {
+        // Sanitize input
+        $char_seq = preg_replace( '/[^A-Z0-9]/i', '', $char_seq );
+
+        if ( empty( $char_seq ) ) {
+            return false;
+        }
+
+        $file = $this->temp_dir . '/cap_' . $this->session_key . '.txt';
+
+        if ( ! file_exists( $file ) || ! is_readable( $file ) ) {
+            return false;
+        }
+
+        $hash = file_get_contents( $file );
+
+        // Delete file after verification attempt (one-time use)
+        @unlink( $file );
+
+        return ( md5( strtolower( $char_seq ) ) === $hash );
+    }
 }

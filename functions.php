@@ -511,3 +511,99 @@ function pn_get_wp_user_link( $email ) {
 
 	return "";
 }
+
+/**
+ * Convert HTML to plain text for email
+ *
+ * Uses WordPress native functions for safe HTML to text conversion
+ *
+ * @param string $html HTML content
+ * @param int $width Line width for wrapping (0 = no wrapping)
+ * @return string Plain text
+ */
+function post_notification_html_to_text( $html, $width = 70 ) {
+	// Remove scripts and styles completely
+	$html = preg_replace( '#<script[^>]*?>.*?</script>#si', '', $html );
+	$html = preg_replace( '#<style[^>]*?>.*?</style>#si', '', $html );
+
+	// Add line breaks before block elements
+	$html = preg_replace( '#<(p|div|h[1-6]|blockquote|pre)[^>]*>#i', "\n", $html );
+	$html = preg_replace( '#</(p|div|h[1-6]|blockquote|pre)>#i', "\n", $html );
+
+	// Convert line breaks
+	$html = preg_replace( '#<br\s*/?\s*>#i', "\n", $html );
+
+	// Convert horizontal rules
+	$html = preg_replace( '#<hr\s*/?\s*>#i', "\n" . str_repeat( '-', 50 ) . "\n", $html );
+
+	// Convert lists
+	$html = preg_replace( '#<li[^>]*>#i', "\n  * ", $html );
+	$html = preg_replace( '#</li>#i', '', $html );
+	$html = preg_replace( '#</?[ou]l[^>]*>#i', "\n", $html );
+
+	// Convert bold/strong to *text*
+	$html = preg_replace( '#<(strong|b)[^>]*>(.*?)</\1>#is', '*$2*', $html );
+
+	// Convert italic/em to _text_
+	$html = preg_replace( '#<(em|i)[^>]*>(.*?)</\1>#is', '_$2_', $html );
+
+	// Convert links to text with URL
+	$html = preg_replace_callback(
+		'#<a[^>]+href=["\'](.*?)["\'][^>]*>(.*?)</a>#is',
+		function( $matches ) {
+			$url = $matches[1];
+			$text = strip_tags( $matches[2] );
+
+			// Don't duplicate if text is already the URL
+			if ( trim( $text ) === trim( $url ) ) {
+				return $url;
+			}
+
+			// Skip if text is empty
+			if ( empty( trim( $text ) ) ) {
+				return $url;
+			}
+
+			return $text . ' (' . $url . ')';
+		},
+		$html
+	);
+
+	// Strip all remaining HTML tags (WordPress native function)
+	$text = wp_strip_all_tags( $html );
+
+	// Convert HTML entities to characters
+	$text = html_entity_decode( $text, ENT_QUOTES | ENT_HTML5, 'UTF-8' );
+
+	// Normalize whitespace
+	$text = preg_replace( '/[ \t]+/', ' ', $text ); // Multiple spaces to one
+	$text = preg_replace( '/\n[ \t]+/', "\n", $text ); // Remove spaces at line start
+	$text = preg_replace( '/[ \t]+\n/', "\n", $text ); // Remove spaces at line end
+	$text = preg_replace( '/\n{3,}/', "\n\n", $text ); // Max 2 line breaks
+
+	// Trim each line
+	$lines = explode( "\n", $text );
+	$lines = array_map( 'trim', $lines );
+	$text = implode( "\n", $lines );
+
+	// Word wrap if width is specified
+	if ( $width > 0 ) {
+		$lines = explode( "\n", $text );
+		$wrapped = array();
+
+		foreach ( $lines as $line ) {
+			// Only wrap if line is longer than width
+			if ( mb_strlen( $line, 'UTF-8' ) > $width ) {
+				// Don't break words
+				$wrapped_line = wordwrap( $line, $width, "\n", false );
+				$wrapped[] = $wrapped_line;
+			} else {
+				$wrapped[] = $line;
+			}
+		}
+
+		$text = implode( "\n", $wrapped );
+	}
+
+	return trim( $text );
+}
