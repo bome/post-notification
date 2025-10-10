@@ -27,11 +27,13 @@ function post_notification_admin_page() {
 	// Secure the admin area
 	//********************************************************//
 
-	if ( ! current_user_can( 'administrator' ) ) {
-		echo __( "You need to be administrator to modify the settings.", 'post_notification' );
-
-		return;
-	}
+    if ( ! current_user_can( 'manage_options' ) ) {
+        wp_die(
+                __( 'You do not have sufficient permissions to access this page.', 'post_notification' ),
+                __( 'Permission Denied', 'post_notification' ),
+                array( 'response' => 403 )
+        );
+    }
 
 
     // Check if this is a CSV export request - handle BEFORE any output
