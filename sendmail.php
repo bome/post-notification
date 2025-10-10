@@ -289,13 +289,9 @@ function post_notification_sendmail( $maildata, $addr, $code = '', $send = true 
 	if ( $send ) {
 		// Use woocommerce mailer if installed and activated in PN Settings
 		if ( ( is_woocommerce_activated() ) and ( get_option( 'post_notification_use_wc_mailer' ) === 'yes' ) ) {
-			global $woocommerce;
 
-			// wrap in WC email
-			$mailer  = WC()->mailer();
-			$message = $mailer->wrap_message( $maildata['title'], $maildata['body'] );
-			// send off
-			$maildata['sent'] = $mailer->send( $addr, $maildata['subject'], $message, $maildata['header'], array() );
+			post_notification_WC_send_with_custom_from( $addr, $maildata['subject'], $maildata['body'], $maildata['header'], array()  );
+
 		} else {
 			//wordpress
 			$maildata['sent'] = wp_mail( $addr, $maildata['subject'], $maildata['body'], $maildata['header'] );
@@ -464,12 +460,6 @@ function post_notification_add_additional_headers( $addr, $maildata, $code = '' 
 		}
 	}
 
-	$senderAdress = get_option( 'post_notification_from_email' );
-	if ( ! empty( $senderAdress ) && is_email( $senderAdress ) ) {
-		// Optional auch mit Absendername ergänzen
-		$headers[] = 'From: ' . $senderAdress;
-	}
-
 	$code              = post_notification_get_code( $addr, $code );
 	$unsubscribe_email = get_option( 'post_notification_unsubscribe_email' );
 	$unsubscribe_url   = post_notification_get_unsubscribeurl( $addr, $code );
@@ -513,4 +503,46 @@ function post_notification_get_unsubscribeurl( $addr, $code ) {
 	$confurl .= "code=" . $code . "&addr=" . $addr;
 
 	return $confurl;
+}
+
+function post_notification_WC_send_with_custom_from( string $to, string $subject, string $html, array $headers = [], array $attachments = [] ) {
+	$from_addr = get_option( 'post_notification_from_email' );
+	$from_name = get_option( 'post_notification_from_name' );
+	if ($from_name === '') {
+		$from_name = get_bloginfo('name');
+	} elseif (strpos($from_name, '@@blogname') !== false) {
+		$from_name = get_bloginfo('name');
+	}
+
+	// 1) Clean headers: remove any existing "From:" lines to avoid duplicates
+	$headers = array_values(array_filter(array_map('strval', $headers), function($h){
+		return stripos($h, 'from:') !== 0; // drop user-provided From
+	}));
+
+	// 2) Set WC/WP From via filters (high priority to win over WC defaults)
+	$f1 = add_filter('woocommerce_email_from_address', function($addr) use ($from_addr){ return is_email($from_addr) ? $from_addr : $addr; }, 100);
+	$f2 = add_filter('woocommerce_email_from_name',    function($name) use ($from_name){ return $from_name ?: $name; }, 100);
+	$f3 = add_filter('wp_mail_from',                   function($addr) use ($from_addr){ return is_email($from_addr) ? $from_addr : $addr; }, 100);
+	$f4 = add_filter('wp_mail_from_name',              function($name) use ($from_name){ return $from_name ?: $name; }, 100);
+
+	// 3) Set envelope sender (= Return-Path) via phpmailer_init
+	$f5 = add_action('phpmailer_init', function( $phpmailer ) use ( $from_addr ) {
+		if ( is_email( $from_addr ) ) {
+			$phpmailer->Sender = $from_addr;   // controls Return-Path
+		}
+	}, 100);
+
+	// 4) Send with WC mailer (wrap_message keeps the template)
+	$mailer  = WC()->mailer();
+	$message = $mailer->wrap_message( $subject, $html );
+	$sent    = $mailer->send( $to, $subject, $message, $headers, $attachments );
+
+	// 5) Cleanup (important so other mails aren’t affected)
+	remove_filter('woocommerce_email_from_address', $f1, 100);
+	remove_filter('woocommerce_email_from_name',    $f2, 100);
+	remove_filter('wp_mail_from',                   $f3, 100);
+	remove_filter('wp_mail_from_name',              $f4, 100);
+	remove_action('phpmailer_init',                 $f5, 100);
+
+	return $sent;
 }
