@@ -203,7 +203,10 @@ function post_notification_header( $html = false ) {
 	$from_name = post_notification_encode( $from_name, get_option( 'blog_charset' ) );
 
 	$from_email = get_option( 'post_notification_from_email' );
-
+	if (empty($from_email)) {
+		//take the blog's admin email
+		$from_email = get_option( 'admin_email' );
+	}
 
 	$header = array();
 
