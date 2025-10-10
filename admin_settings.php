@@ -89,7 +89,7 @@ function post_notification_admin_sub() {
                 'page_meta'                  => array( 'type' => 'text', 'default' => 'no' ),
                 'filter_include'             => array( 'type' => 'text', 'default' => 'no' ),
                 'uninstall'                  => array( 'type' => 'text', 'default' => 'no' ),
-                'debug'                      => array( 'type' => 'text', 'default' => 'no' ),
+                'debug'                      => array( 'type' => 'text', 'default' => 'yes' ),
                 'lock'                       => array( 'type' => 'text', 'default' => 'file' ),
                 'empty_cats'                 => array( 'type' => 'text', 'default' => 'no' ),
                 'show_cats'                  => array( 'type' => 'text', 'default' => 'no' ),
@@ -681,6 +681,12 @@ function post_notification_admin_sub() {
                         <option value="no" <?php echo post_notification_get_selected( 'honeypot', 'no' ); ?>><?php echo "No"; ?></option>
                         <option value="yes" <?php echo post_notification_get_selected( 'honeypot', 'yes' ); ?>><?php echo "Yes"; ?></option>
                     </select>
+                </td>
+            </tr>
+            <tr class="pn_row">
+                <td></td>
+                <td class="pn_td">
+                    <?php _e( 'Using WP Armour if available', 'post_notification' ); ?>
                 </td>
             </tr>
 
