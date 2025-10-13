@@ -43,12 +43,12 @@ The entire codebase was modernized, secured, and aligned with WordPress coding s
 
 ## 🧩 Technical Notes
 
-| Setting | Description |
-|----------|--------------|
-| **Requires WordPress** | ≥ 2.2 |
-| **Tested up to** | 5.6 |
-| **Tested with PHP** | 8.0 |
-| **Stable tag** | 1.2.11 (legacy base) |
+| Setting | Description              |
+|----------|--------------------------|
+| **Requires WordPress** | ≥ 5.6                    |
+| **Tested up to** | 6.8                      |
+| **Tested with PHP** | 8.4                      |
+| **Stable tag** | 1.2.11 (legacy base)     |
 | **Maintained by** | Bome Software since 2020 |
 
 ---
