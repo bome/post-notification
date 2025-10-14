@@ -2,3 +2,14 @@ _temp
 /nbproject/private/
 /commit_bome_*
 .php_cs.cache
+/.idea/.gitignore
+/.idea/copilot.data.migration.agent.xml
+/.idea/copilot.data.migration.ask.xml
+/.idea/copilot.data.migration.ask2agent.xml
+/.idea/copilot.data.migration.edit.xml
+/.idea/deployment.xml
+/.idea/modules.xml
+/.idea/php.xml
+/.idea/post-notification.iml
+/.idea/vcs.xml
+/.idea/watcherTasks.xml
