@@ -15,168 +15,247 @@ function post_notification_arrayreplace( $input, $array ) {
 	return $input;
 }
 
+/**
+ * Build the notification email payload for a post.
+ *
+ * - Rendert den Beitrag mit pn_render_content_for_email() (inkl. Block-/Shortcode-Support).
+ * - Optional schneidet „more“ bzw. „excerpt“ zu.
+ * - Sanitiert HTML für E-Mail und macht Links/Bilder absolut.
+ * - Baut Betreff, Body, Header und Metadaten.
+ *
+ * @param int         $id        Post ID.
+ * @param string      $template  Template-Dateiname (z. B. 'default.html'); leer = Option verwenden.
+ * @return array|false { 'id','subject','body','header','title' } oder false bei Fehler.
+ */
 function post_notification_create_email( $id, $template = '' ) {
-	$blogname = get_option( 'blogname' );
-
-	if ( get_option( 'post_notification_hdr_nl' ) == 'rn' ) {
-		$hdr_nl = "\r\n";
-	} else {
-		$hdr_nl = "\n";
-	}
-
-	if ( $template == '' ) {
-		$template = get_option( 'post_notification_template' );
-	}
-	if ( substr( $template, - 5 ) == '.html' ) {
-		$html_email = true;
-	} else {
-		$html_email = false;
-	}
-
-	//Get the post
 	$post = get_post( $id );
-
-	if ( empty( $post ) ) {
+	if ( ! $post ) {
 		return false;
 	}
 
-	$post_url = get_permalink( $post->ID );
+	$blogname   = get_bloginfo( 'name' );
+	$post_url   = get_permalink( $post );
+	$post_title = wp_strip_all_tags( get_the_title( $post ) );
+	$author     = get_userdata( $post->post_author );
+	$post_author = $author ? $author->display_name : '';
 
-	$post_author = get_userdata( $post->post_author );
-	$post_author = $post_author->display_name;
-	$post_title  = $post->post_title;
+	// Template & Mailtyp
+	if ( $template === '' ) {
+		$template = (string) get_option( 'post_notification_template' );
+	}
+	$html_email = ( substr( $template, -5 ) === '.html' );
 
-	// 1) get raw content (no filters)
-	$post_content = get_post_field( 'post_content', $id );
+	// 1) Beitrag in „kuratiertem“ E-Mail-HTML rendern (inkl. Block-/Shortcode-Pipeline & Exclude-UI)
+	$content_html = pn_render_content_for_email( $id, 'exclude' );
 
-	// 2) handle "more" option without deprecated split()
-	if ( get_option( 'post_notification_show_content' ) === 'more' ) {
-		$parts        = explode( '<!--more', $post_content, 2 );
-		$post_content = $parts[0];
+	// 2) „more“ / „excerpt“ anwenden (nach dem Rendern, damit Blöcke/Shortcodes zuerst laufen)
+	$show_mode = (string) get_option( 'post_notification_show_content' );
+	if ( $show_mode === 'more' ) {
+		// Anker anhand des <!--more--> Markers schneiden
+		$parts        = explode( '<!--more', $content_html, 2 );
+		$content_html = $parts[0];
 		if ( ! empty( $parts[1] ) ) {
-			$post_content .= '<a href="@@permalink">' . esc_html( get_option( 'post_notification_read_more' ) ) . '</a>';
+			$read_more = esc_html( (string) get_option( 'post_notification_read_more' ) );
+			$content_html .= '<p><a href="@@permalink">' . $read_more . '</a></p>';
 		}
-	}
-
-	// 3) excerpt fallback
-	if ( get_option( 'post_notification_show_content' ) === 'excerpt' ) {
+	} elseif ( $show_mode === 'excerpt' ) {
+		// Wenn WP-Auszug existiert, den nehmen – sonst HTML-schonend kürzen
 		if ( ! empty( $post->post_excerpt ) ) {
-			$post_content = $post->post_excerpt;
+			$content_html = wpautop( wp_kses_post( $post->post_excerpt ) );
 		} else {
-			// simple 55-words excerpt, tags stripped
-			$text  = wp_strip_all_tags( $post_content );
-			$words = preg_split( '/\s+/', trim( $text ) );
-			if ( count( $words ) > 55 ) {
-				$words = array_slice( $words, 0, 55 );
-				$text  = implode( ' ', $words ) . '…';
-			}
-			$post_content = wp_kses_post( $text );
+			$content_html = pn_trim_html_words( $content_html, 55, '…' );
 		}
-		$post_content .= '<br><a href="@@permalink">' . esc_html( get_option( 'post_notification_read_more' ) ) . '</a>';
+		$read_more = esc_html( (string) get_option( 'post_notification_read_more' ) );
+		$content_html .= '<p><a href="@@permalink">' . $read_more . '</a></p>';
 	}
 
-	// 4) Remove shortcodes (so no builder/JS runs)
-	$post_content = strip_shortcodes( $post_content );
+	// 3) Sanitize: auf E-Mail-Subset einschränken & href/src absolut auf https
+	$content_html = pn_email_sanitize_html( $content_html, home_url( '/', 'https' ) );
 
-	// 5) Basic formatting: balance tags and add paragraphs
-	$post_content = wpautop( balanceTags( $post_content, true ) );
+	// 4) Plain-Text Ableitung (nur wenn Textmail)
+	$content_for_body = $html_email ? $content_html : post_notification_html_to_text( $content_html );
 
+	// 5) Template laden & Variablen ersetzen
+	$body = (string) post_notification_ldfile( $template );
+	$body = str_replace(
+		['@@content','@@title','@@permalink','@@author','@@time','@@date'],
+		[
+			$content_for_body,
+			$post_title,
+			$post_url,
+			$post_author,
+			mysql2date( get_option( 'time_format' ), $post->post_date ),
+			mysql2date( get_option( 'date_format' ), $post->post_date ),
+		],
+		$body
+	);
 
-	// 6) Sanitize to an email-friendly subset and absolutize href/src to https
-
-	$post_content = pn_email_sanitize_html( $post_content, home_url( '/', 'https' ) );
-
-	// Do some date stuff
-	$post_date = mysql2date( get_option( 'date_format' ), $post->post_date );
-	$post_time = mysql2date( get_option( 'time_format' ), $post->post_date );
-
-	if ( ! $html_email ) {
-		if ( get_option( 'post_notification_debug' ) == 'yes' ) {
-			echo 'Date1: ' . htmlspecialchars( $post_date ) . '<br />';
-		}
-
-		if ( function_exists( 'iconv' ) && ( strpos( phpversion(), '4' ) == 0 ) ) { //html_entity_decode does not support UTF-8 in php < 5
-			$post_time = ( ( $temp = iconv( get_option( 'blog_charset' ), 'ISO8859-1', $post_time ) ) != "" ) ? $temp : $post_time;
-			$post_date = ( ( $temp = iconv( get_option( 'blog_charset' ), 'ISO8859-1', $post_date ) ) != "" ) ? $temp : $post_date;
-		}
-		if ( get_option( 'post_notification_debug' ) == 'yes' ) {
-			echo 'Date2: ' . htmlspecialchars( $post_date ) . '<br />';
-		}
-
-
-		$post_time = @html_entity_decode( $post_time, ENT_QUOTES, get_option( 'blog_charset' ) );
-		$post_date = @html_entity_decode( $post_date, ENT_QUOTES, get_option( 'blog_charset' ) );
-		if ( get_option( 'post_notification_debug' ) == 'yes' ) {
-			echo 'Date3: ' . htmlspecialchars( $post_date ) . '<br />';
-		}
-
-		if ( function_exists( 'iconv' ) && ( strpos( phpversion(), '4' ) == 0 ) ) { //html_entity_decode does not support UTF-8 in php < 5
-			$post_time = ( ( $temp = iconv( 'ISO8859-1', get_option( 'blog_charset' ), $post_time ) ) != "" ) ? $temp : $post_time;
-			$post_date = ( ( $temp = iconv( 'ISO8859-1', get_option( 'blog_charset' ), $post_date ) ) != "" ) ? $temp : $post_date;
-		}
-		if ( get_option( 'post_notification_debug' ) == 'yes' ) {
-			echo 'Date4: ' . htmlspecialchars( $post_date ) . '<br />';
-		}
+	// 6) User-replacements (falls vorhanden)
+	if ( function_exists( 'post_notification_uf_perPost' ) ) {
+		$body = post_notification_arrayreplace( $body, post_notification_uf_perPost( $id ) );
 	}
 
-	$post_title = strip_tags( $post_title );
-
-
-	// Convert from HTML to text for plain text emails
-	if ( ! $html_email && ! empty( $post_content ) ) {
-		$post_content = post_notification_html_to_text( $post_content );
-	}
-
-	// Load template
-	$body = post_notification_ldfile( $template );
-
-	if ( get_option( 'post_notification_debug' ) == 'yes' ) {
-		echo "Email variables: <br /><table>";
-		echo '<tr><td>Emailtype</td><td>' . ( ( $html_email ) ? 'HTML' : 'TEXT' ) . '</td>';
-		echo '<tr><td>@@title</td><td>' . $post_title . '</td></tr>';
-		echo '<tr><td>@@permalink</td><td>' . $post_url . '</td></tr>';
-		echo '<tr><td>@@author</td><td>' . $post_author . '</td></tr>';
-		echo '<tr><td>@@time</td><td>' . $post_time . '</td></tr>';
-		echo '<tr><td>@@date</td><td>' . $post_date . '</td></tr>';
-		echo "</table>";
-	}
-
-	// Replace variables
-	$body = str_replace( '@@content', $post_content, $body ); //Insert the posting first. -> for Replacements
-	$body = str_replace( '@@title', $post_title, $body );
-	$body = str_replace( '@@permalink', $post_url, $body );
-	$body = str_replace( '@@author', $post_author, $body );
-	$body = str_replace( '@@time', $post_time, $body );
-	$body = str_replace( '@@date', $post_date, $body );
-
-	// User replacements
-	if ( function_exists( 'post_notificataion_uf_perPost' ) ) {
-		$body = post_notification_arrayreplace( $body, post_notificataion_uf_perPost( $id ) );
-	}
-
-	// EMAIL HEADER
+	// 7) Header bauen
 	$header = post_notification_header( $html_email );
 
-
-	// SUBJECT
-	$subject = get_option( 'post_notification_subject' );
-	$subject = str_replace( '@@blogname', $blogname, $subject );
-	if ( $post_title != '' ) {
-		$subject = str_replace( '@@title', $post_title, $subject );
-	} else {
-		$subject = str_replace( '@@title', __( 'New post', 'post_notification' ), $subject );
-	}
+	// 8) Betreff bauen
+	$subject = (string) get_option( 'post_notification_subject' );
+	$subject = str_replace(
+		['@@blogname','@@title'],
+		[ $blogname, ( $post_title !== '' ? $post_title : __( 'New post', 'post_notification' ) ) ],
+		$subject
+	);
 	$subject = post_notification_encode( $subject, get_option( 'blog_charset' ) );
 
+	return [
+		'id'      => $id,
+		'subject' => $subject,
+		'body'    => $body,
+		'header'  => $header,
+		'title'   => $post_title,
+	];
+}
 
-	$rv            = array();
-	$rv['id']      = $id;
-	$rv['subject'] = $subject;
-	$rv['body']    = $body;
-	$rv['header']  = $header;
-	$rv['title']   = $post_title;
+/**
+ * Kürzt bereits gerendertes HTML auf N Wörter, balanciert Tags und erhält Basis-Markup.
+ *
+ * @param string $html
+ * @param int    $words
+ * @param string $more
+ * @return string
+ */
+function pn_trim_html_words( string $html, int $words = 55, string $more = '…' ) : string {
+	// Text extrahieren, Wortanzahl begrenzen
+	$text  = wp_strip_all_tags( $html );
+	$parts = preg_split( '/\s+/', trim( $text ) );
+	if ( is_array( $parts ) && count( $parts ) > $words ) {
+		$parts = array_slice( $parts, 0, $words );
+		$text  = implode( ' ', $parts ) . $more;
+	}
+	// Minimal wieder mit <p> verpacken
+	return wpautop( wp_kses_post( $text ) );
+}
 
-	return $rv;
+/**
+ * Render post content for email with a controlled subset of `the_content` filters.
+ * - Honors your "include/exclude" list
+ * - Temporarily removes disallowed filters, runs the_content, then restores them
+ * - Disables email-hostile filters by default (e.g., autoembed)
+ *
+ * @param int    $post_id
+ * @param string $mode 'include' or 'exclude' (how your settings are interpreted)
+ * @return string Rendered HTML safe-ish for email
+ */
+function pn_render_content_for_email( int $post_id, string $mode = 'exclude' ): string {
+	global $wp_filter, $post;
+
+	// 1) Load post & prepare global $post for filters/shortcodes that rely on loop context.
+	$post = get_post( $post_id );
+	if ( ! $post ) {
+		return '';
+	}
+	setup_postdata( $post );
+
+	// 2) Start with raw content (don’t strip shortcodes here — we want allowed filters to run).
+	$content = get_post_field( 'post_content', $post_id );
+
+	// Optional: handle your “more” / “excerpt” options BEFORE running filters, if you want to
+	// keep the email short. Otherwise, do it AFTER render with a HTML truncator.
+
+	// 3) Figure out which callbacks to detach.
+	//    - Pull user selection from your settings helper (array of callback IDs).
+	//    - Always force-remove a few email-hostile filters (iframes, heavy builders).
+	$user_list = pn_get_saved_the_content_excludes(); // or pn_get_includes() if you flipped semantics
+	$force_blocklist = array(
+		'autoembed',                         // iframes in email = bad
+		'prepend_attachment',                // irrelevant for email
+		'builder_wrapper',                   // typical page-builder chrome
+		'advanced_hook_content_markup',      // theme/builder wrappers
+		'_render_related_images',            // complex grids
+	);
+
+	// Normalize to a set we can check quickly.
+	$user_set   = is_array( $user_list ) ? array_flip( $user_list ) : array();
+	$force_set  = array_flip( $force_blocklist );
+
+	// 4) Collect active the_content filters and decide which to remove.
+	$removed = array(); // keep what we remove so we can restore it later
+
+	if ( isset( $wp_filter['the_content'] ) && $wp_filter['the_content'] instanceof WP_Hook ) {
+		// Snapshot current callbacks grouped by priority.
+		$callbacks = $wp_filter['the_content']->callbacks;
+
+		foreach ( $callbacks as $priority => $group ) {
+			foreach ( $group as $unique_id => $entry ) {
+				// Derive a readable name for matching against your stored IDs.
+				$callback_id = pn_callback_to_id( $entry['function'] ); // same helper you already use
+
+				$should_remove = false;
+
+				if ( isset( $force_set[ $callback_id ] ) ) {
+					$should_remove = true;
+				} elseif ( 'exclude' === $mode && isset( $user_set[ $callback_id ] ) ) {
+					$should_remove = true;
+				} elseif ( 'include' === $mode && ! isset( $user_set[ $callback_id ] ) ) {
+					$should_remove = true;
+				}
+
+				if ( $should_remove ) {
+					// Temporarily remove it and record for restoration.
+					remove_filter( 'the_content', $entry['function'], (int) $priority );
+					$removed[] = array(
+						'fn'       => $entry['function'],
+						'priority' => (int) $priority,
+					);
+				}
+			}
+		}
+	}
+
+	// 5) Make sure the bare minimum stays ON for emails (block rendering + basic formatting).
+	//    These are core-safe and useful in email HTML.
+	//    If they’re already attached, add_filter will be a no-op due to unique IDs.
+	add_filter( 'the_content', 'do_blocks', 9 );
+	add_filter( 'the_content', 'wptexturize', 10 );
+	add_filter( 'the_content', 'wpautop', 10 );
+	add_filter( 'the_content', 'shortcode_unautop', 10 );
+	add_filter( 'the_content', 'wp_replace_insecure_home_url', 10 );
+
+	// 6) Run the normal pipeline now that we’ve curated it.
+	$rendered = apply_filters( 'the_content', $content );
+
+	// 7) Restore previously removed callbacks to leave WP in a clean state.
+	foreach ( $removed as $r ) {
+		add_filter( 'the_content', $r['fn'], $r['priority'] );
+	}
+
+	// 8) Email-oriented sanitation/absolutization you already have.
+	$rendered = pn_email_sanitize_html( $rendered, home_url( '/', 'https' ) );
+
+	// 9) Cleanup loop globals.
+	wp_reset_postdata();
+
+	return $rendered;
+}
+
+/**
+ * Minimal helper to stringify a callback into your stable ID format.
+ * Must match what you store in the DB (same logic as your checklist).
+ */
+function pn_callback_to_id( $callback ): string {
+	if ( is_string( $callback ) ) {
+		return $callback;
+	}
+	if ( is_array( $callback ) && is_object( $callback[0] ) ) {
+		return get_class( $callback[0] ) . '::' . $callback[1];
+	}
+	if ( is_array( $callback ) ) {
+		return $callback[0] . '::' . $callback[1];
+	}
+	if ( $callback instanceof Closure ) {
+		return 'closure';
+	}
+	return 'unknown';
 }
 
 
