@@ -607,3 +607,247 @@ function post_notification_html_to_text( $html, $width = 70 ) {
 
 	return trim( $text );
 }
+
+
+/**
+ * Helpers to render and manage the "the_content" exclude list in Post Notification settings.
+ * Compatible with modern WP_Hook structure.
+ */
+
+/**
+ * Build a stable callback ID for a filter callback, similar to WP internals.
+ * Falls back to human-readable labels where possible.
+ */
+function pn_build_callback_id( string $tag, $callback, int $priority ): string {
+	// WordPress helper available? Use it to match how WP indexes callbacks.
+	if ( function_exists( '_wp_filter_build_unique_id' ) ) {
+		$id = _wp_filter_build_unique_id( $tag, $callback, $priority );
+		if ( $id !== false && $id !== null ) {
+			return (string) $id;
+		}
+	}
+
+	// Manual fallback: convert the callable to a readable string.
+	if ( is_string( $callback ) ) {
+		return $callback;
+	}
+	if ( is_array( $callback ) && count( $callback ) === 2 ) {
+		[ $obj_or_class, $method ] = $callback;
+		if ( is_object( $obj_or_class ) ) {
+			$obj_or_class = get_class( $obj_or_class );
+		}
+
+		return $obj_or_class . '::' . $method;
+	}
+	if ( $callback instanceof Closure ) {
+		// Closures are unstable; add a hash to avoid collisions.
+		return 'closure_' . md5( spl_object_hash( $callback ) . '|' . $tag . '|' . $priority );
+	}
+
+	// Last resort: serialize/hash anything else
+	return 'cb_' . md5( maybe_serialize( $callback ) . '|' . $tag . '|' . $priority );
+}
+
+/**
+ * Collect all callbacks attached to "the_content", grouped and sorted by priority.
+ * Returns a flat list of [id, label, priority].
+ */
+function pn_collect_the_content_callbacks(): array {
+	global $wp_filter;
+
+	$result = [];
+	$tag    = 'the_content';
+
+	if ( empty( $wp_filter[ $tag ] ) ) {
+		return $result;
+	}
+
+	// Since WP 4.7 this is a WP_Hook object
+	$hook = $wp_filter[ $tag ];
+
+	// Get the callbacks array by priority
+	$callbacks_by_priority = is_object( $hook ) && isset( $hook->callbacks ) ? $hook->callbacks : (array) $hook; // very old WP fallbacks
+
+	ksort( $callbacks_by_priority, SORT_NUMERIC );
+
+	foreach ( $callbacks_by_priority as $priority => $callbacks ) {
+		foreach ( (array) $callbacks as $maybe_id => $entry ) {
+			// $entry should contain ['function' => callable]
+			if ( empty( $entry['function'] ) ) {
+				continue;
+			}
+			$callable = $entry['function'];
+			$id       = pn_build_callback_id( $tag, $callable, (int) $priority );
+
+			// Human label for UI
+			$label    = $id;
+			$result[] = [
+				'id'       => $id,
+				'label'    => $label,
+				'priority' => (int) $priority,
+			];
+		}
+	}
+
+	return $result;
+}
+
+/**
+ * Load saved exclude list from options (handles serialized legacy value).
+ */
+function pn_get_saved_the_content_excludes(): array {
+	$saved = get_option( 'post_notification_the_content_exclude' );
+
+	if ( is_string( $saved ) && strlen( $saved ) ) {
+		// Backward compatibility: legacy serialized value
+		$maybe = @unserialize( $saved );
+		if ( $maybe !== false || $saved === 'b:0;' ) {
+			$saved = $maybe;
+		}
+	}
+
+	return is_array( $saved ) ? $saved : [];
+}
+
+/**
+ * Render the checklist UI for excludes. Call from your settings page.
+ */
+function pn_render_the_content_exclude_checklist(): void {
+	$items    = pn_collect_the_content_callbacks();
+	$selected = pn_get_saved_the_content_excludes();
+
+	if ( empty( $items ) ) {
+		echo '<p><em>No filters found on <code>the_content</code>.</em></p>';
+		return;
+	}
+
+	echo '<div class="pn-filter-list">';
+
+	foreach ( $items as $item ) {
+		$callback_id = $item['id'];
+		$is_checked  = in_array( $callback_id, $selected, true );
+		$priority    = (int) $item['priority'];
+
+		// nutzt deine neue Helper-Funktion mit Name + Kurzbeschreibung:
+		pn_render_filter_checkbox_line( $callback_id, $is_checked, $priority );
+	}
+
+	echo '</div>';
+}
+
+/**
+ * Try to normalize a callback ID to a recognizable name.
+ * - Strips leading 32-hex chars (anonymous closure IDs in some setups)
+ * - If still empty, returns original.
+ */
+function pn_normalize_callback_name( string $id ): string {
+	// Strip a leading 32-char hex blob if present (e.g. "0000000...check_weaverii")
+	if ( preg_match( '/^([0-9a-f]{32})(.+)$/i', $id, $m ) ) {
+		$id = ltrim( $m[2] );
+	}
+
+	// Some entries may end with only hex; keep them unchanged to display raw.
+	return $id !== '' ? $id : $id;
+}
+
+
+
+/**
+ * Example: render one line with name + description.
+ * Use this in your settings table where you output each checkbox.
+ */
+function pn_render_filter_checkbox_line( string $callback_id, bool $checked, int $priority ): void {
+	$name = pn_normalize_callback_name( $callback_id );
+	$data = pn_get_filter_description(  $callback_id ) ?? null;
+
+	$desc  = $data['desc'] ?? 'Unknown or plugin-specific filter.';
+	$rec   = $data['recommendation'] ?? '⚠️ Not classified – check manually.';
+
+	printf(
+		'<div class="pn-filter-item" data-status="%7$s">
+		<label>
+			<input type="checkbox" name="the_content[]" value="%1$s" %2$s />
+			<span class="pn-filter-name"><code>%3$s</code></span>
+			<span class="pn-filter-priority">(prio %4$d)</span>
+		</label>
+		<div class="pn-filter-meta">
+			<p class="pn-filter-desc">%5$s</p>
+			<p class="pn-filter-recommendation">%6$s</p>
+		</div>
+		<hr class="pn-filter-separator" />
+	</div>',
+		esc_attr($callback_id),
+		checked($checked, true, false),
+		esc_html($name),
+		(int)$priority,
+		esc_html($desc),
+		esc_html($rec),
+		esc_attr(pn_get_recommendation_status($rec))
+	);
+}
+
+function pn_get_recommendation_status( string $rec ): string {
+	if ( str_contains( $rec, '✅' ) ) {
+		return 'success';
+	}
+	if ( str_contains( $rec, '⚠️' ) ) {
+		return 'warning';
+	}
+	if ( str_contains( $rec, '❌' ) ) {
+		return 'error';
+	}
+	return 'neutral';
+}
+
+
+/**
+ * Load filter descriptions from external file
+ */
+function pn_get_filter_descriptions_array(): array {
+	static $descriptions = null;
+
+	if ( $descriptions === null ) {
+		$file = __DIR__ . '/content-filter-descriptions.php';
+		if ( file_exists( $file ) ) {
+			$descriptions = include $file;
+		} else {
+			$descriptions = [];
+		}
+	}
+
+	return $descriptions;
+}
+
+/**
+ * Get description and recommendation for a known filter callback.
+ */
+function pn_get_filter_description( string $raw_id ): array {
+	$name         = pn_normalize_callback_name( $raw_id );
+	$descriptions = pn_get_filter_descriptions_array();
+
+	// Exact match
+	if ( isset( $descriptions[ $name ] ) ) {
+		$data = $descriptions[ $name ];
+
+		return [
+			'desc'           => $data['desc'] ?? 'No description available.',
+			'recommendation' => $data['recommendation'] ?? '⚠️ Not classified – check manually.',
+		];
+	}
+
+	// Heuristics: try to detect known substrings
+	foreach ( $descriptions as $key => $desc ) {
+		if ( $key !== '' && stripos( $name, $key ) !== false ) {
+			return [
+				'desc'           => $desc['desc'] ?? 'No description available.',
+				'recommendation' => $desc['recommendation'] ?? '⚠️ Not classified – check manually.',
+			];
+		}
+	}
+
+	// Generic fallback
+	return [
+		'desc'           => 'Unknown/3rd-party filter. Likely intended for web rendering; may not be email-friendly.',
+		'recommendation' => '⚠️ Not classified – check manually.',
+	];
+}

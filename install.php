@@ -142,7 +142,7 @@ function post_notification_install() {
 	add_option( 'post_notification_filter_include', 'yes', 'Include PN via filters', 'yes' );
 	add_option( 'post_notification_selected_cats', '0', 'The category preselection list.', 'no' );
 	add_option( 'post_notification_debug', 'no', 'Turn debugging on.', 'no' );
-	add_option( 'post_notification_the_content_exclude', serialize( array() ), 'Include PN via filters', 'no' );
+	add_option( 'post_notification_the_content_include', serialize( array() ), 'Include PN via filters', 'no' );
 	add_option( 'post_notification_empty_cats', 'no', 'Whether to show empty cats', 'no' );
 	add_option( 'post_notification_show_cats', 'yes', 'Whether to show cats', 'no' );
 	add_option( 'post_notification_subscribers', '0', 'Number of Subscribers', 'yes' );

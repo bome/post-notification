@@ -100,21 +100,24 @@ function post_notification_admin_sub() {
                 'unsubscribe_email'          => array( 'type' => 'email', 'default' => '' ),
                 'unsubscribe_link_in_header' => array( 'type' => 'text', 'default' => 'no' ),
                 'use_wc_mailer'              => array( 'type' => 'text', 'default' => 'no' ),
-                'the_content'                => array( 'type'        => 'array',
-                                                       'default'     => array(),
-                                                       'option_name' => 'the_content_exclude',
+                'the_content'                => array(
+                        'type'        => 'array',
+                        'default'     => array(),
+                        'option_name' => 'the_content_exclude',
                 ),
                 'captcha'                    => array( 'type' => 'int', 'default' => 0, 'min' => 0 ),
                 'pause'                      => array( 'type' => 'int', 'default' => 0, 'min' => 0 ),
                 'nervous'                    => array( 'type' => 'int', 'default' => 0, 'min' => 0 ),
-                'maxmails'                   => array( 'type'        => 'int',
-                                                       'default'     => 10,
-                                                       'min'         => 1,
-                                                       'option_name' => 'maxsend',
+                'maxmails'                   => array(
+                        'type'        => 'int',
+                        'default'     => 10,
+                        'min'         => 1,
+                        'option_name' => 'maxsend',
                 ),
-                'hdr_nl'                     => array( 'type'           => 'text',
-                                                       'default'        => 'n',
-                                                       'allowed_values' => array( 'n', 'rn' ),
+                'hdr_nl'                     => array(
+                        'type'           => 'text',
+                        'default'        => 'n',
+                        'allowed_values' => array( 'n', 'rn' ),
                 ),
         );
 
@@ -480,14 +483,15 @@ function post_notification_admin_sub() {
             <tr class="pn_row">
                 <th class="pn_th_caption"><?php _e( 'Number of mails to be sent in a burst:', 'post_notification' ); ?></th>
                 <td class="pn_td"><input name="maxmails" type="text" id="maxmail" size="35"
-                                         value="<?php echo esc_attr( get_option( 'post_notification_maxsend' ) ); ?>"/></td>
+                                         value="<?php echo esc_attr( get_option( 'post_notification_maxsend' ) ); ?>"/>
+                </td>
             </tr>
 
 
             <tr class="pn_row">
                 <th class="pn_th_caption"><?php _e( 'Pause between transmission:', 'post_notification' ); ?></th>
                 <td class="pn_td"><input name="pause" type="text" id="pause" size="35"
-                                         value="<?php echo esc_attr(  get_option( 'post_notification_pause' ) ); ?>"/> <?php _e( 'seconds.', 'post_notification' ); ?>
+                                         value="<?php echo esc_attr( get_option( 'post_notification_pause' ) ); ?>"/> <?php _e( 'seconds.', 'post_notification' ); ?>
                 </td>
             </tr>
 
@@ -527,40 +531,11 @@ function post_notification_admin_sub() {
 
             <tr class="pn_row">
 
-                <th class="pn_th_caption"><?php _e( 'Filters to exclude from filtering "the_content":', 'post_notification' ) ?></th>
-
+                <th class="pn_th_caption">
+                    <?php _e( 'Filters to exclude from filtering "the_content":', 'post_notification' ); ?>
+                </th>
                 <td class="pn_td">
-                    <?php
-                    global $wp_filter;
-                    $rem_filters = get_option( 'post_notification_the_content_exclude' );
-                    if ( is_string( $rem_filters ) && strlen( $rem_filters ) ) {
-                        $rem_filters = unserialize( $rem_filters );
-                    }
-                    if ( ! is_array( $rem_filters ) ) {
-                        $rem_filters = array();
-                    }
-
-                    foreach ( $wp_filter['the_content'] as $filter_level => $filters_in_level ) {
-                        foreach ( $filters_in_level as $filter ) {
-                            if ( function_exists( '_wp_filter_build_unique_id' ) ) {
-                                // If a function is passed the unique_id will return the function name.
-                                // Therefore there should be no problem with backward compatibilty
-                                // priority may/must be false as all functions should get an Id when being registered
-                                // As prio = false, $tag is not needed at all!
-                                $fn_name = _wp_filter_build_unique_id( 'the_content', $filter['function'], $filter_level );
-                            } else {
-                                $fn_name = $filter['function'];
-                            }
-                            if ( ! ( $fn_name === false ) ) {
-                                echo '<input type="checkbox"  name="the_content[]" value="' . esc_attr( $fn_name ) . '" ';
-                                if ( in_array( $fn_name, $rem_filters ) ) {
-                                    echo ' checked="checked" ';
-                                }
-
-                                echo '>' . esc_html( $fn_name ) . '</input><br />';
-                            }
-                        }
-                    } ?>
+                    <?php pn_render_the_content_exclude_checklist(); ?>
                 </td>
             </tr>
 
@@ -613,7 +588,7 @@ function post_notification_admin_sub() {
             <tr class="pn_row">
                 <th class="pn_th_caption"><?php _e( 'Email used for unsubscribe header:', 'post_notification' ); ?></th>
                 <td class="pn_td"><input name="unsubscribe_email" type="text" id="pn_url" size="60"
-                                         value="<?php echo esc_attr(  get_option( 'post_notification_unsubscribe_email' ) ); ?>"/>
+                                         value="<?php echo esc_attr( get_option( 'post_notification_unsubscribe_email' ) ); ?>"/>
                 </td>
             </tr>
         </table>
@@ -625,7 +600,8 @@ function post_notification_admin_sub() {
             <tr class="pn_row">
                 <th class="pn_th_caption"><?php _e( 'Name of the Post Notification page:', 'post_notification' ); ?></th>
                 <td class="pn_td"><input name="page_name" type="text" id="page_name" size="60"
-                                         value="<?php echo esc_attr(  get_option( 'post_notification_page_name' ) ); ?>"/></td>
+                                         value="<?php echo esc_attr( get_option( 'post_notification_page_name' ) ); ?>"/>
+                </td>
             </tr>
 
             <tr class="pn_row">
@@ -663,7 +639,8 @@ function post_notification_admin_sub() {
                     <a href="<?php _e( 'http://en.wikipedia.org/wiki/Captcha', 'post_notification' ); ?>"><?php _e( 'Captcha-chars:', 'post_notification' ); ?></a>
                 </th>
                 <td class="pn_td"><input name="captcha" type="text" size="60"
-                                         value="<?php echo esc_attr( get_option( 'post_notification_captcha' ) ); ?>"/></td>
+                                         value="<?php echo esc_attr( get_option( 'post_notification_captcha' ) ); ?>"/>
+                </td>
             </tr>
             <tr class="pn_row">
                 <td></td>

@@ -1,2 +1,165 @@
-.post_notification_admin_table{width:100%;color:#333333}.post_notification_admin_table a{color:#333333}.post_notification_admin_table a:visited{color:#333333}.post_notification_admin_table a:hover{color:#333333;text-decoration:#333333 underline}.post_notification_admin_table th{text-align:left;font-weight:bold;color:#555555}.post_notification_admin_table .pn_remove{width:5%;text-align:center}.post_notification_admin_table .pn_mail_address{width:22%;padding-left:5px;min-width:210px}.post_notification_admin_table .pn_accepted{width:3%;text-align:center;min-width:40px}.post_notification_admin_table .pn_date_accepted{width:15%;padding-left:5px;min-width:160px}.post_notification_admin_table .pn_subscribed_cats{width:20%;padding-left:5px;min-width:225px}.post_notification_admin_table .pn_ip{width:6%;padding-left:5px;min-width:100px}.post_notification_admin_table .pn_user_link{width:10%;text-align:center;min-width:120px}.post_notification_admin_table tr{margin:7px;background:#dddddd}.post_notification_admin_table tr:nth-child(odd){background:#cccccc}.post_notification_admin_table .pn_th_caption{text-align:right;width:25%;min-width:100px;padding:5px}.post_notification_admin_table .pn_th_caption_warning{width:100%;text-align:center;color:darkred}.post_notification_admin_table .pn_td{width:75%;padding:5px}#pn_admin_menu ul{list-style-type:none;margin:0;padding:0;overflow:hidden;vertical-align:middle}#pn_admin_menu li{float:left;background-color:#dddddd;border:1px solid #333333;margin:3px;border-radius:2px}#pn_admin_menu li a{display:block;color:#666666;text-align:center;padding:8px;text-decoration:none;font-size:120%}#pn_admin_menu li a:hover{background-color:#cccccc}#pn_admin_menu li.activepnaction{background-color:#bbbbbb}
+@charset "UTF-8";
+.post_notification_admin_table {
+  width: 100%;
+  color: #333333;
+}
+.post_notification_admin_table a {
+  color: #333333;
+}
+.post_notification_admin_table a:visited {
+  color: #333333;
+}
+.post_notification_admin_table a:hover {
+  color: #333333;
+  text-decoration: #333333 underline;
+}
+.post_notification_admin_table th {
+  text-align: left;
+  font-weight: bold;
+  color: #555555;
+}
+.post_notification_admin_table .pn_remove {
+  width: 5%;
+  text-align: center;
+}
+.post_notification_admin_table .pn_mail_address {
+  width: 22%;
+  padding-left: 5px;
+  min-width: 210px;
+}
+.post_notification_admin_table .pn_accepted {
+  width: 3%;
+  text-align: center;
+  min-width: 40px;
+}
+.post_notification_admin_table .pn_date_accepted {
+  width: 15%;
+  padding-left: 5px;
+  min-width: 160px;
+}
+.post_notification_admin_table .pn_subscribed_cats {
+  width: 20%;
+  padding-left: 5px;
+  min-width: 225px;
+}
+.post_notification_admin_table .pn_ip {
+  width: 6%;
+  padding-left: 5px;
+  min-width: 100px;
+}
+.post_notification_admin_table .pn_user_link {
+  width: 10%;
+  text-align: center;
+  min-width: 120px;
+}
+.post_notification_admin_table tr {
+  margin: 7px;
+  background: #dddddd;
+}
+.post_notification_admin_table tr:nth-child(odd) {
+  background: #cccccc;
+}
+.post_notification_admin_table .pn_th_caption {
+  text-align: right;
+  width: 25%;
+  min-width: 100px;
+  padding: 5px;
+}
+.post_notification_admin_table .pn_th_caption_warning {
+  width: 100%;
+  text-align: center;
+  color: darkred;
+}
+.post_notification_admin_table .pn_td {
+  width: 75%;
+  padding: 5px;
+}
+
+#pn_admin_menu {
+  /* Change the link color to #111 (black) on hover */
+}
+#pn_admin_menu ul {
+  list-style-type: none;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  vertical-align: middle;
+}
+#pn_admin_menu li {
+  float: left;
+  background-color: #dddddd;
+  border: 1px solid #333333;
+  margin: 3px;
+  border-radius: 2px;
+}
+#pn_admin_menu li a {
+  display: block;
+  color: #666666;
+  text-align: center;
+  padding: 8px;
+  text-decoration: none;
+  font-size: 120%;
+}
+#pn_admin_menu li a:hover {
+  background-color: #cccccc;
+}
+#pn_admin_menu li.activepnaction {
+  background-color: #bbbbbb;
+}
+
+.pn-filter-item {
+  padding: 0.5rem 0;
+}
+.pn-filter-item label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+}
+.pn-filter-item .pn-filter-name code {
+  background: #f6f8fa;
+  padding: 0.1rem 0.4rem;
+  border-radius: 3px;
+  font-size: 0.9em;
+}
+.pn-filter-item .pn-filter-priority {
+  color: #666;
+  font-size: 0.85em;
+  margin-left: auto;
+}
+.pn-filter-item .pn-filter-meta {
+  margin-left: 1.8rem;
+  font-size: 0.85em;
+  line-height: 1.3;
+}
+.pn-filter-item .pn-filter-meta .pn-filter-desc {
+  color: #333;
+  margin: 0.2rem 0;
+}
+.pn-filter-item .pn-filter-meta .pn-filter-recommendation {
+  margin: 0;
+  font-weight: 600;
+}
+.pn-filter-item .pn-filter-meta .pn-filter-recommendation::before {
+  content: "• ";
+}
+.pn-filter-item .pn-filter-meta .pn-filter-recommendation [data-status=success] {
+  color: #1a7f37;
+}
+.pn-filter-item .pn-filter-meta .pn-filter-recommendation [data-status=warning] {
+  color: #e6a700;
+}
+.pn-filter-item .pn-filter-meta .pn-filter-recommendation [data-status=error] {
+  color: #d32f2f;
+}
+.pn-filter-item .pn-filter-list {
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+}
+.pn-filter-item .pn-filter-separator {
+  margin: 0.4rem 0;
+  border: none;
+  border-top: 1px solid #e1e4e8;
+}
+
 /*# sourceMappingURL=postnotification_admin.css.map */
