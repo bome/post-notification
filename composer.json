@@ -1,0 +1,14 @@
+{
+  "name": "bome/post-notification",
+  "description": "PHP package for sending notifications on new posts (newsletter) to subscribers.",
+  "minimum-stability": "stable",
+  "license": "proprietary",
+  "authors": [
+    {
+      "name": "knandi",
+      "email": "andi.bome@knandi.de"
+    }
+  ],
+  "require": {
+  }
+}

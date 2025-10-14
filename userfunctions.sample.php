@@ -26,14 +26,14 @@
  *
  * @return array An array of replacements
  */
-function post_notificataion_uf_perPost( $post_id ) {
+function post_notification_uf_perPost( $post_id ) {
 	//This is the easiest way to create array with a low possibility of errors
-	$rv                 = array();
+	$replacements                 = array();
 	$cats               = wp_get_post_categories( $post_id );
 	$tags               = wp_get_post_tags( $post_id );
-	$rv['@@categories'] = wp_get_post_categories( $post_id );
+	$replacements['@@categories'] = wp_get_post_categories( $post_id );
 
-	return $rv;
+	return $replacements;
 }
 
 /**

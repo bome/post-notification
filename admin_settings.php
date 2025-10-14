@@ -507,7 +507,15 @@ function post_notification_admin_sub() {
             <tr class="pn_row">
                 <td></td>
                 <td class="pn_td">
-                    <?php _e( 'According to the PHP-specification \r\n must be used. Never the less quite a few servers have trouble if they get a \r\n instead of \n. You\'ll see part of the header in your mail if you have the wrong selection.', 'post_notification' ) ?>
+                    <?php
+                    _e(
+                            'According to RFC 5322, email headers must use \r\n (CRLF) line breaks. ' .
+                            'Some legacy servers had issues with this, requiring \n as a workaround. ' .
+                            'Modern mail systems (PHPMailer, wp_mail) fully support the standard \r\n. ' .
+                            'Use \r\n (default) unless you experience header issues in emails.',
+                            'post_notification'
+                    );
+                    ?>
                 </td>
             </tr>
 
