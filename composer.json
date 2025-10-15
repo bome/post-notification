@@ -9,6 +9,25 @@
       "email": "andi.bome@knandi.de"
     }
   ],
+  "autoload": {
+    "psr-4": {
+      "pn\\": "classes/"
+    }
+  },
   "require": {
+    "automattic/jetpack-autoloader": "^3",
+    "monolog/monolog": "^3.6",
+    "psr/log": "^3.0",
+    "twig/twig": "^3.8"
+  },
+  "config": {
+    "optimize-autoloader": true,
+    "sort-packages": true,
+    "platform": {
+      "php": "8.3"
+    },
+    "allow-plugins": {
+      "automattic/jetpack-autoloader": true
+    }
   }
 }

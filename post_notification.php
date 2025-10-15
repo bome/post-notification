@@ -20,6 +20,15 @@ Min WP Version: 5
 # Wordpress. Please see the readme.txt for details.
 #------------------------------------------------------
 
+# Load Jetpack Autoloader (manages package versions across plugins)
+require_once plugin_dir_path( __FILE__ ) . 'vendor/autoload_packages.php';
+
+/* Optional in development:
+ * Prefer dev versions (9999999-dev, dev-branch) while testing.
+ */
+if ( ! defined( 'JETPACK_AUTOLOAD_DEV' ) ) {
+    define( 'JETPACK_AUTOLOAD_DEV', true );
+}
 
 /**
  * This file has all the stuff that is really needed to initialize the plugin.
