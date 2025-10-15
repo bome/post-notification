@@ -6,11 +6,11 @@
  * Version: 1.3.1
  * Author: bome (based on other Authors, see README.md)
  * License: GPL v2
- * Min WP Version: 5.0
+ * Requires at least: 5.0
+ * Requires PHP: 8.3
  *
- * GitHub Plugin URI: bome/post-notification
+ * GitHub URI: bome/post-notification
  * Primary Branch: master
- * Release Asset: true
  */
 
 
