@@ -70,6 +70,9 @@ function post_notification_get_template_profiles() {
 	// Allowed file extensions for templates
 	$allowed_extensions = array( 'html', 'txt', 'tmpl', 'php' );
 
+	// Directories to exclude from template scanning
+	$excluded_dirs = array( 'vendor', 'log', 'logs', 'cache', 'tmp', 'css', 'scss', 'classes', '_temp', '.git', '.idea', 'log', 'scss', '_temp' );
+
 	$dir_handle = @opendir( POST_NOTIFICATION_PATH );
 
 	if ( ! $dir_handle ) {
@@ -79,6 +82,11 @@ function post_notification_get_template_profiles() {
 	while ( false !== ( $dir = readdir( $dir_handle ) ) ) {
 		// Skip hidden directories and special directories
 		if ( $dir[0] === '.' || $dir[0] === '_' ) {
+			continue;
+		}
+
+		// Skip excluded directories
+		if ( in_array( strtolower( $dir ), $excluded_dirs, true ) ) {
 			continue;
 		}
 

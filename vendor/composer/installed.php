@@ -3,11 +3,11 @@
         'name' => 'bome/post-notification',
         'pretty_version' => 'dev-master',
         'version' => 'dev-master',
-        'reference' => '0d4d35ef1d80fc42dddee940f9a09b5c25366eb1',
+        'reference' => '3158d6af78593f2d7c393e393cb23d7972d50308',
         'type' => 'library',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
-        'dev' => true,
+        'dev' => false,
     ),
     'versions' => array(
         'automattic/jetpack-autoloader' => array(
@@ -22,7 +22,7 @@
         'bome/post-notification' => array(
             'pretty_version' => 'dev-master',
             'version' => 'dev-master',
-            'reference' => '0d4d35ef1d80fc42dddee940f9a09b5c25366eb1',
+            'reference' => '3158d6af78593f2d7c393e393cb23d7972d50308',
             'type' => 'library',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),

@@ -1,16 +1,17 @@
 <?php
-
-/*
-Plugin Name: Post Notification
-Plugin URI: https://github.com/bome/post-notification
-Description: Sends an email to all subscribers. See Readme2.txt or instructions for details.
-Author: bome, (based on Moritz Strübe)
-Version: 1.2.50
-License: GPL v2
-Author URI: http://bome.com
-Min WP Version: 5
-
-*/
+/**
+ * Plugin Name: Post Notification
+ * Plugin URI: https://github.com/bome/post-notification
+ * Description: Sends an email to all subscribers.
+ * Version: 1.3.1
+ * Author: bome (based on other Authors, see README.md)
+ * License: GPL v2
+ * Min WP Version: 5.0
+ *
+ * GitHub Plugin URI: bome/post-notification
+ * Primary Branch: master
+ * Release Asset: true
+ */
 
 
 #------------------------------------------------------

@@ -10,9 +10,12 @@
 
 function post_notification_is_file( $path, $file ) {
     if ( ! is_file( $path . '/' . $file ) ) {
-        echo '<div class="error">' . __( 'File missing in profile folder.', 'post_notification' ) . '<br />';
-        echo __( 'Folder', 'post_notification' ) . ': <b>' . $path . '</b><br />';
-        echo __( 'File', 'post_notification' ) . ': <b>' . $file . '</b></div>';
+        // Nur Warnung ausgeben, wenn es ein Sprach-Ordner ist
+        if ( preg_match( '/[a-z]{2}_[A-Z]{2}$/', basename( $path ) ) ) {
+            echo '<div class="error">' . __( 'File missing in profile folder.', 'post_notification' ) . '<br />';
+            echo __( 'Folder', 'post_notification' ) . ': <b>' . esc_html( $path ) . '</b><br />';
+            echo __( 'File', 'post_notification' ) . ': <b>' . esc_html( $file ) . '</b></div>';
+        }
 
         return false;
     }
