@@ -31,6 +31,8 @@ if ( ! defined( 'JETPACK_AUTOLOAD_DEV' ) ) {
     define( 'JETPACK_AUTOLOAD_DEV', true );
 }
 
+require_once plugin_dir_path( __FILE__ ) . 'add_logger.php';
+
 /**
  * This file has all the stuff that is really needed to initialize the plugin.
  */
