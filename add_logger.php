@@ -14,7 +14,12 @@ function add_pn_logger( $loggerName = 'pn' ) {
 		$formatter  = new LineFormatter( $output, $dateFormat );
 
 		$upload_dir = wp_upload_dir();
-		$log_dir = trailingslashit( $upload_dir['basedir'] ) . 'PostNotification/logs/';
+		$log_dir = trailingslashit( $upload_dir['basedir'] ) . 'post-notification/logs/';
+
+		//generate log directory if it does not exist
+		if (!file_exists($log_dir)) {
+			mkdir($log_dir, 0777, true);
+		}
 
 		$file = $log_dir . pn_generate_filename( $loggerName );
 

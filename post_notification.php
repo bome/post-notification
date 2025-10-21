@@ -33,6 +33,16 @@ if ( ! defined( 'JETPACK_AUTOLOAD_DEV' ) ) {
 
 require_once plugin_dir_path( __FILE__ ) . 'add_logger.php';
 
+function get_pn_logger() {
+    static $logger = null;
+
+    if ($logger === null) {
+        $logger = add_pn_logger();
+    }
+
+    return $logger;
+}
+
 /**
  * This file has all the stuff that is really needed to initialize the plugin.
  */
@@ -63,7 +73,13 @@ if ( ! defined( 'POST_NOTIFICATION_PATH_REL' ) ) {
 
 if ( ! defined( 'POST_NOTIFICATION_CONTENT_DIR' ) ) {
     // Content dir (filesystem path), fallback safe
-    $content_dir = defined( 'WP_CONTENT_DIR' ) ? WP_CONTENT_DIR : trailingslashit( ABSPATH ) . 'wp-content';
+    if ( defined( 'WP_CONTENT_DIR' ) ) {
+        $content_dir = WP_CONTENT_DIR;
+    } else {
+        // ABSPATH may not be defined in non-WordPress contexts (e.g., during static analysis)
+        $root_guess = defined( 'ABSPATH' ) ? ABSPATH : dirname( __FILE__, 3 ) . '/';
+        $content_dir = trailingslashit( $root_guess ) . 'wp-content';
+    }
     define( 'POST_NOTIFICATION_CONTENT_DIR', trailingslashit( $content_dir ) );
 }
 
