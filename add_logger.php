@@ -6,25 +6,39 @@ use Monolog\Handler\StreamHandler;
 use Monolog\Level;
 use Monolog\Logger;
 
-function add_pn_logger( $loggerName = 'pn' ) {
+function add_pn_logger( $loggerName = 'post-notification' ) {
 	static $loggers = array();
 	if ( ! isset( $loggers[ $loggerName ] ) ) {
 		$dateFormat = "d.m. - H:i:s";
-		$output     = "[%datetime%] | %level_name%: %message% %context% %extra%\n";
+		// include channel so multiple logical loggers share one file with prefixes
+		$output     = "[%datetime%] | %level_name% [%channel%]: %message% %context% %extra%\n";
 		$formatter  = new LineFormatter( $output, $dateFormat );
 
-		$upload_dir = wp_upload_dir();
-		$log_dir = trailingslashit( $upload_dir['basedir'] ) . 'post-notification/logs/';
+		// Determine log directory from settings
+		$mode = get_option( 'post_notification_log_dir_mode', 'default' );
+		$custom = trim( (string) get_option( 'post_notification_log_dir_custom', '' ) );
 
-		//generate log directory if it does not exist
-		if (!file_exists($log_dir)) {
-			mkdir($log_dir, 0777, true);
+		$default_dir = trailingslashit( POST_NOTIFICATION_PATH ) . 'log/';
+		$log_dir = $default_dir;
+
+		if ( $mode === 'custom' && $custom !== '' ) {
+			// very simple absolute-path check; if invalid, fall back to default
+			$is_absolute = ( DIRECTORY_SEPARATOR === substr( $custom, 0, 1 ) ) || preg_match( '/^[A-Za-z]:\\\\/', $custom );
+			if ( $is_absolute ) {
+				$log_dir = trailingslashit( $custom );
+			}
 		}
 
-		$file = $log_dir . pn_generate_filename( $loggerName );
+		//generate log directory if it does not exist
+		if ( ! file_exists( $log_dir ) ) {
+			@mkdir( $log_dir, 0775, true );
+		}
+
+		// Single shared logfile name as requested
+		$file = $log_dir . 'post-notification.log';
 
 		if ( ! file_exists( $file ) ) {
-			touch( $file );
+			@touch( $file );
 		}
 
 		$streamHandler = new StreamHandler( $file, Level::Debug );

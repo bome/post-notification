@@ -306,7 +306,11 @@ function pn_email_sanitize_html( string $html, string $base = '' ): string {
 				continue;
 			}
 			if ( ! preg_match( '#^[a-z][a-z0-9+\-.]*://#i', $u ) ) {
-				$el->setAttribute( $attr, ( $u[0] === '/' ? $home . $u : $home . '/' . ltrim( $u, '/' ) ) );
+				$rel = $u;
+				// normalize dot-segments when base is site root
+				while ( strpos( $rel, '../' ) === 0 ) { $rel = substr( $rel, 3 ); }
+				if ( strpos( $rel, './' ) === 0 ) { $rel = substr( $rel, 2 ); }
+				$el->setAttribute( $attr, ( $rel[0] === '/' ? $home . $rel : $home . '/' . ltrim( $rel, '/' ) ) );
 			}
 		}
 	}
