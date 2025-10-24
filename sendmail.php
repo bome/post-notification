@@ -167,7 +167,12 @@ function pn_render_content_for_email( int $post_id, string $mode = 'exclude' ): 
 	//    - Always force-remove a few email-hostile filters (iframes, heavy builders).
 	$user_list = pn_get_saved_the_content_excludes(); // or pn_get_includes() if you flipped semantics
 	$force_blocklist = array(
-		'autoembed',                         // iframes in email = bad
+		// Explicitly block WordPress oEmbed callbacks which can pull remote HTML/JS
+		'WP_Embed::autoembed',               // turns plain URLs into embeds (iframes)
+		'WP_Embed::run_shortcode',           // [embed] shortcodes → iframes
+		// Keep legacy short name for setups that stringify differently
+		'autoembed',
+		// Misc callbacks that add non-email-friendly chrome
 		'prepend_attachment',                // irrelevant for email
 		'builder_wrapper',                   // typical page-builder chrome
 		'advanced_hook_content_markup',      // theme/builder wrappers
@@ -260,22 +265,40 @@ function pn_callback_to_id( $callback ): string {
 
 
 function pn_email_sanitize_html( string $html, string $base = '' ): string {
-	// remove scripts/styles
-	$html = preg_replace( '#<(script|style)\b[^>]*>.*?</\1>#is', '', $html );
+	$logger = function_exists('add_pn_logger') ? add_pn_logger('pn') : null;
 
-	// absolutize href/src
+	// strip hard-disallowed containers early
+	$before = $html;
+	$html = preg_replace( '#<(script|style|iframe|object|embed|base|link)\b[^>]*>.*?</\1>#is', '', $html );
+	// also remove stray self-closing base/link tags
+	$html = preg_replace( '#<\s*(base|link)\b[^>]*\/?>#is', '', $html );
+
+	if ( $logger && $before !== $html ) {
+		$logger->info('pn_email_sanitize_html: stripped disallowed tags from content');
+	}
+
+	// absolutize href/src on a and img only
 	$dom = new DOMDocument( '1.0', 'UTF-8' );
 	libxml_use_internal_errors( true );
 	$dom->loadHTML( '<div id="r">' . $html . '</div>', LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD );
 	$home = rtrim( $base ?: home_url( '/', 'https' ), '/' );
 
 	foreach ( [ 'a' => 'href', 'img' => 'src' ] as $tag => $attr ) {
-		foreach ( $dom->getElementsByTagName( $tag ) as $el ) {
+		$nodes = $dom->getElementsByTagName( $tag );
+		// NodeList is live; collect first
+		$els = [];
+		foreach ( $nodes as $n ) { $els[] = $n; }
+		foreach ( $els as $el ) {
 			if ( ! $el->hasAttribute( $attr ) ) {
 				continue;
 			}
 			$u = $el->getAttribute( $attr );
 			if ( $u === '' || $u[0] === '#' ) {
+				continue;
+			}
+			// skip dangerous schemes early; wp_kses will also enforce, but avoid leaking into previews
+			if ( preg_match( '#^(javascript|data):#i', $u ) ) {
+				$el->removeAttribute( $attr );
 				continue;
 			}
 			if ( strpos( $u, '//' ) === 0 ) {
@@ -296,7 +319,7 @@ function pn_email_sanitize_html( string $html, string $base = '' ): string {
 	}
 	libxml_clear_errors();
 
-	// allow only email-friendly tags
+	// allow only email-friendly tags + a minimal style attr
 	$allowed = [
 		'a'      => [ 'href' => true, 'title' => true, 'target' => true, 'rel' => true, 'style' => true ],
 		'p'      => [ 'style' => true ],
@@ -335,11 +358,16 @@ function pn_email_sanitize_html( string $html, string $base = '' ): string {
 		'tr'     => [],
 		'td'     => [ 'width' => true, 'align' => true, 'valign' => true, 'style' => true ],
 	];
-	$out     = wp_kses( $out, $allowed );
-	// remove empty <p>
-	$out = preg_replace( '#<p>\s*(?:&nbsp;|\xC2\xA0|\s)*</p>#i', '', $out );
+	$sanitized = wp_kses( $out, $allowed );
 
-	return trim( $out );
+	if ( $logger && $sanitized !== $out ) {
+		$logger->info('pn_email_sanitize_html: removed disallowed attributes/tags via wp_kses');
+	}
+
+	// remove empty <p>
+	$sanitized = preg_replace( '#<p>\s*(?:&nbsp;|\xC2\xA0|\s)*</p>#i', '', $sanitized );
+
+	return trim( $sanitized );
 }
 
 
