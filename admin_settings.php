@@ -451,6 +451,28 @@ function post_notification_admin_sub() {
                     </select>
                 </td>
             </tr>
+            <tr class="pn_row">
+                <td></td>
+                <td class="pn_td">
+                    <?php
+                    $current_profile_dir = post_notification_get_profile_dir( $profile );
+                    echo '<p>' . esc_html__( 'Templates are files inside the selected profile folder. Files ending with .txt are sent as plain text; files ending with .html are sent as HTML.', 'post_notification' ) . '</p>';
+                    echo '<p><strong>' . esc_html__( 'Current profile folder:', 'post_notification' ) . '</strong> <code>' . esc_html( $current_profile_dir ) . '</code></p>';
+                    ?>
+                    <p class="description">
+                        <?php _e( 'To create a new template, copy an existing .txt or .html file in that folder, rename it, edit it to your needs, then select it here and click save.', 'post_notification' ); ?>
+                    </p>
+                    <p class="description">
+                        <?php
+                        printf(
+                            /* translators: 1: data profiles path */
+                            __( 'Tip: Put your custom profiles into %s so they survive plugin updates.', 'post_notification' ),
+                            '<code>' . esc_html( POST_NOTIFICATION_DATA ) . '</code>'
+                        );
+                        ?>
+                    </p>
+                </td>
+            </tr>
 
             <?php if ( is_woocommerce_activated() ) { ?>
                 <tr class="pn_row">
