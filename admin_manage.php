@@ -7,20 +7,24 @@
 # Wordpress. Please see the readme.txt for details.
 #------------------------------------------------------
 
-require_once( "ldif2array.class.php" );
-
 function ldif2addresses( $input ) {
-    // Validate file path
+    // Simple built-in LDIF parser to extract mail: entries; no external class needed
     if ( ! is_readable( $input ) ) {
         return '';
     }
 
-    $ld     = new ldif2array( $input );
+    $content = @file_get_contents( $input );
+    if ( $content === false ) {
+        return '';
+    }
+
+    // Collect all values of lines like "mail: someone@example.com"
     $retval = '';
-    if ( $ld->makeArray() ) {
-        foreach ( $ld->getArray() as $a ) {
-            if ( isset( $a['mail'] ) && is_email( $a['mail'] ) ) {
-                $retval .= sanitize_email( $a['mail'] ) . ',';
+    if ( preg_match_all( '/^mail:\s*(.+)$/mi', $content, $matches ) ) {
+        foreach ( $matches[1] as $raw ) {
+            $email = trim( $raw );
+            if ( is_email( $email ) ) {
+                $retval .= sanitize_email( $email ) . ',';
             }
         }
     }

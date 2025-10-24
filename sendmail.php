@@ -608,7 +608,7 @@ function post_notification_get_unsubscribeurl( $addr, $code ) {
 
 function post_notification_WC_send_with_custom_from( string $to, string $subject, string $html, array $headers = [], array $attachments = [] ) {
 	$from_addr = get_option( 'post_notification_from_email' );
-	if (empty($from_email)) {
+	if (empty($from_addr)) {
 		//take the blog's admin email
 		$from_addr = get_option( 'admin_email' );
 	}

@@ -462,7 +462,7 @@ function post_notification_admin_sub() {
             <tr class="pn_row">
                 <th class="pn_th_caption"><?php _e( 'Template:', 'post_notification' ); ?></th>
                 <td class="pn_td">
-                    <select name="en_template">
+                    <select name="en_template" id="pn_template_select">
                         <?php echo $en_templates; ?>
                     </select>
                 </td>
@@ -475,6 +475,10 @@ function post_notification_admin_sub() {
                     echo '<p>' . esc_html__( 'Templates are files inside the selected profile folder. Files ending with .txt are sent as plain text; files ending with .html are sent as HTML.', 'post_notification' ) . '</p>';
                     echo '<p><strong>' . esc_html__( 'Current profile folder:', 'post_notification' ) . '</strong> <code>' . esc_html( $current_profile_dir ) . '</code></p>';
                     ?>
+                    <div id="pn_wc_template_note" style="display:none; margin:8px 0; padding:8px; border-left:4px solid #2271b1; background:#f0f6fc;">
+                        <strong><?php echo esc_html__( 'WooCommerce mailer notice', 'post_notification' ); ?>:</strong>
+                        <span class="pn_wc_note_text"></span>
+                    </div>
                     <p class="description">
                         <?php _e( 'To create a new template, copy an existing .txt or .html file in that folder, rename it, edit it to your needs, then select it here and click save.', 'post_notification' ); ?>
                     </p>
@@ -553,15 +557,45 @@ function post_notification_admin_sub() {
                 (function(){
                     var form = document.getElementById('update');
                     if (!form) return;
-                    function toggleSmtp(){
-                        var method = form.querySelector('input[name="mailer_method"]:checked');
-                        var rows = form.querySelectorAll('.pn_smtp_settings');
-                        for (var i=0;i<rows.length;i++){
-                            rows[i].style.display = (method && method.value === 'pn_smtp') ? '' : 'none';
+                    var noteBox = document.getElementById('pn_wc_template_note');
+                    var noteText = noteBox ? noteBox.querySelector('.pn_wc_note_text') : null;
+                    var tmpl = document.getElementById('pn_template_select');
+                    function isHtmlTemplate(){
+                        if (!tmpl) return false;
+                        var val = (tmpl.value||'').toLowerCase();
+                        return val.slice(-5) === '.html';
+                    }
+                    function currentMethod(){
+                        var m = form.querySelector('input[name="mailer_method"]:checked');
+                        return m ? m.value : 'wp';
+                    }
+                    function updateNotes(){
+                        if (!noteBox || !noteText) return;
+                        var method = currentMethod();
+                        if (method === 'wc'){
+                            noteBox.style.display = '';
+                            if (isHtmlTemplate()){
+                                noteText.textContent = '<?php echo esc_js( __( 'WooCommerce mailer wraps your selected PN HTML template inside the WooCommerce email layout. Your template content is still used.', 'post_notification' ) ); ?>';
+                            } else {
+                                noteText.textContent = '<?php echo esc_js( __( 'WooCommerce mailer wraps emails in an HTML layout. Your selected .txt template will be converted into HTML inside the WooCommerce template. For best results, consider choosing a .html template.', 'post_notification' ) ); ?>';
+                            }
+                        } else if (method === 'pn_smtp' || method === 'wp') {
+                            noteBox.style.display = 'none';
                         }
                     }
+                    function toggleSmtp(){
+                        var method = currentMethod();
+                        var rows = form.querySelectorAll('.pn_smtp_settings');
+                        for (var i=0;i<rows.length;i++){
+                            rows[i].style.display = (method === 'pn_smtp') ? '' : 'none';
+                        }
+                        updateNotes();
+                    }
                     form.addEventListener('change', function(e){
-                        if (e.target && e.target.name === 'mailer_method') toggleSmtp();
+                        if (e.target){
+                            if (e.target.name === 'mailer_method') toggleSmtp();
+                            if (e.target.id === 'pn_template_select') updateNotes();
+                        }
                     });
                     toggleSmtp();
                 })();
