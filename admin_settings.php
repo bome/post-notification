@@ -103,6 +103,9 @@ function post_notification_admin_sub() {
                 'unsubscribe_email'          => array( 'type' => 'email', 'default' => '' ),
                 'unsubscribe_link_in_header' => array( 'type' => 'text', 'default' => 'no' ),
                 'use_wc_mailer'              => array( 'type' => 'text', 'default' => 'no' ),
+                // Logging directory settings
+                'log_dir_mode'               => array( 'type' => 'text', 'default' => 'default', 'allowed_values' => array( 'default', 'custom' ) ),
+                'log_dir_custom'             => array( 'type' => 'text', 'default' => '' ),
                 'the_content'                => array(
                         'type'        => 'array',
                         'default'     => array(),
@@ -750,6 +753,40 @@ function post_notification_admin_sub() {
         <h4> <?php _e( 'Miscellaneous', 'post_notification' ); ?></h4>
         <table class="post_notification_admin_table">
 
+            <tr class="pn_row">
+                <th class="pn_th_caption"><?php _e( 'Log directory', 'post_notification' ); ?>:</th>
+                <td class="pn_td">
+                    <?php
+                    $log_mode   = get_option( 'post_notification_log_dir_mode', 'default' );
+                    $log_custom = get_option( 'post_notification_log_dir_custom', '' );
+                    $default_dir = trailingslashit( POST_NOTIFICATION_PATH ) . 'log/';
+                    $effective_dir = $default_dir;
+                    if ( $log_mode === 'custom' && ! empty( $log_custom ) ) {
+                        $effective_dir = trailingslashit( $log_custom );
+                    }
+                    ?>
+                    <label>
+                        <input type="radio" name="log_dir_mode" value="default" <?php echo checked( $log_mode, 'default', false ); ?> />
+                        <?php _e( 'Default (plugin folder /log)', 'post_notification' ); ?>
+                        <code><?php echo esc_html( $default_dir ); ?></code>
+                    </label>
+                    <br/>
+                    <label>
+                        <input type="radio" name="log_dir_mode" value="custom" <?php echo checked( $log_mode, 'custom', false ); ?> />
+                        <?php _e( 'Custom path (outside webroot recommended)', 'post_notification' ); ?>
+                    </label>
+                    <br/>
+                    <input type="text" name="log_dir_custom" id="log_dir_custom" size="60" value="<?php echo esc_attr( $log_custom ); ?>" placeholder="/var/log/post-notification/" />
+                    <p class="description">
+                        <?php _e( 'Note: PHP process must have write permissions to this directory. The plugin will attempt to create the folder if it does not exist.', 'post_notification' ); ?>
+                    </p>
+                    <p>
+                        <?php _e( 'Effective log directory', 'post_notification' ); ?>:
+                        <code><?php echo esc_html( $effective_dir ); ?></code><br/>
+                        <?php _e( 'All logs are written to a single file named', 'post_notification' ); ?> <code>post-notification.log</code>.
+                    </p>
+                </td>
+            </tr>
 
             <tr class="pn_row">
                 <th class="pn_th_caption"><?php _e( 'Debug:', 'post_notification' ) ?></th>
@@ -761,14 +798,6 @@ function post_notification_admin_sub() {
                 </td>
             </tr>
             <tr class="pn_row">
-                <th class="pn_th_caption">&nbsp;</th>
-                <td class="pn_td">
-                    <button type="button" id="pn_reveal_uninstall" class="button">
-                        <?php _e( 'Reveal uninstall option', 'post_notification' ); ?>
-                    </button>
-                </td>
-            </tr>
-            <tr class="pn_row pn_uninstall_tr" style="display:none;">
                 <th class="pn_th_caption"><?php _e( 'Uninstall:', 'post_notification' ) ?></th>
                 <td class="pn_td">
                     <select name="uninstall">
@@ -777,26 +806,11 @@ function post_notification_admin_sub() {
                     </select>
                 </td>
             </tr>
-            <tr class="pn_row pn_uninstall_tr" style="display:none;">
+            <tr class="pn_row">
                 <th class="pn_th_caption_warning" colspan="2">
                     <?php _e( 'WARNING: If this option is set, all database entries are deleted upon deactivation. Of course all data is lost.', 'post_notification' ); ?></th>
 
             </tr>
-            <script type="text/javascript">
-                (function(){
-                    var btn = document.getElementById('pn_reveal_uninstall');
-                    if (!btn) return;
-                    btn.addEventListener('click', function(){
-                        var ok = window.confirm('<?php echo esc_js( __( 'Please confirm: Enabling this option will delete all Post Notification data on plugin deactivation. Continue?', 'post_notification' ) ); ?>');
-                        if (!ok) { return; }
-                        var rows = document.querySelectorAll('.pn_uninstall_tr');
-                        for (var i = 0; i < rows.length; i++) {
-                            rows[i].style.display = (rows[i].tagName && rows[i].tagName.toLowerCase() === 'tr') ? 'table-row' : 'block';
-                        }
-                        btn.parentNode.parentNode.style.display = 'none';
-                    });
-                })();
-            </script>
 
             <tr class="pn_row">
                 <th class="pn_th_caption">&nbsp;</th>
