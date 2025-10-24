@@ -39,14 +39,25 @@ function post_notification_page_content() {
 		'body'   => ''
 	);
 
-	// Load strings for the current profile
+ // Load strings for the current profile with backward compatibility
 	$strings_file = post_notification_get_profile_dir() . '/strings.php';
 	if ( ! file_exists( $strings_file ) ) {
 		$content['header'] = 'Error';
 		$content['body'] = '<p class="error">Configuration error: strings file not found.</p>';
 		return $content;
 	}
-	require( $strings_file );
+	global $post_notification_strings;
+	unset( $post_notification_strings );
+	$loaded = include $strings_file;
+	if ( ! isset( $post_notification_strings ) || ! is_array( $post_notification_strings ) ) {
+		if ( is_array( $loaded ) ) {
+			$post_notification_strings = $loaded;
+		} elseif ( isset( $strings ) && is_array( $strings ) ) {
+			$post_notification_strings = $strings;
+		} elseif ( isset( $pn_strings ) && is_array( $pn_strings ) ) {
+			$post_notification_strings = $pn_strings;
+		}
+	}
 
 	// Validate strings are loaded
 	if ( ! isset( $post_notification_strings ) || ! is_array( $post_notification_strings ) ) {

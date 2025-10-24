@@ -23,25 +23,53 @@ function post_notification_is_file( $path, $file ) {
     return true;
 }
 
-function post_notification_check_string( $path, $string ) {
-    require( $path . '/strings.php' );
-    if ( ! array_key_exists( $string, $post_notification_strings ) ) {
-        echo '<div class="error">' . __( 'Missing string in string file.', 'post_notification' ) . '<br />';
-        echo __( 'File', 'post_notification' ) . ': <b>' . $path . '/strings.php </b><br />';
-        echo __( 'String', 'post_notification' ) . ': <b>' . $string . '</b></div>';
+function post_notification_check_string( $path, $string, $silent = false ) {
+    static $invalid_once = array();
 
+    // Load strings in a backward-compatible way
+    global $post_notification_strings;
+    // Ensure a clean slate for this include
+    unset( $post_notification_strings );
+    $loaded = include $path . '/strings.php';
+
+    // Accept multiple legacy conventions
+    if ( ! isset( $post_notification_strings ) || ! is_array( $post_notification_strings ) ) {
+        if ( is_array( $loaded ) ) {
+            $post_notification_strings = $loaded;
+        } elseif ( isset( $strings ) && is_array( $strings ) ) { // very old packs
+            $post_notification_strings = $strings;
+        } elseif ( isset( $pn_strings ) && is_array( $pn_strings ) ) { // alternative var name used by forks
+            $post_notification_strings = $pn_strings;
+        }
+    }
+
+    if ( ! isset( $post_notification_strings ) || ! is_array( $post_notification_strings ) ) {
+        if ( ! $silent && empty( $invalid_once[ $path ] ) ) {
+            echo '<div class="error">' . __( 'Invalid strings file: $post_notification_strings is missing or not an array.', 'post_notification' ) . '<br />';
+            echo __( 'File', 'post_notification' ) . ': <b>' . $path . '/strings.php</b></div>';
+            $invalid_once[ $path ] = true;
+        }
+        return false;
+    }
+
+    if ( ! array_key_exists( $string, $post_notification_strings ) ) {
+        if ( ! $silent ) {
+            echo '<div class="error">' . __( 'Missing string in string file.', 'post_notification' ) . '<br />';
+            echo __( 'File', 'post_notification' ) . ': <b>' . $path . '/strings.php </b><br />';
+            echo __( 'String', 'post_notification' ) . ': <b>' . $string . '</b></div>';
+        }
         return false;
     }
 
     return true;
 }
 
-function post_notification_is_profile( $path ) {
+function post_notification_is_profile( $path, $silent = true ) {
     if ( ! ( post_notification_is_file( $path, 'confirm.tmpl' ) && post_notification_is_file( $path, 'reg_success.tmpl' ) && post_notification_is_file( $path, 'select.tmpl' ) && post_notification_is_file( $path, 'subscribe.tmpl' ) && post_notification_is_file( $path, 'unsubscribe.tmpl' ) && post_notification_is_file( $path, 'strings.php' ) ) ) {
         return false;
     }
 
-    if ( ! ( post_notification_check_string( $path, 'error' ) && post_notification_check_string( $path, 'already_subscribed' ) && post_notification_check_string( $path, 'activation_faild' ) && post_notification_check_string( $path, 'address_not_in_database' ) && post_notification_check_string( $path, 'sign_up_again' ) && post_notification_check_string( $path, 'deaktivated' ) && post_notification_check_string( $path, 'no_longer_activated' ) && post_notification_check_string( $path, 'check_email' ) && post_notification_check_string( $path, 'wrong_captcha' ) && post_notification_check_string( $path, 'all' ) && post_notification_check_string( $path, 'saved' ) ) ) {
+    if ( ! ( post_notification_check_string( $path, 'error', $silent ) && post_notification_check_string( $path, 'already_subscribed', $silent ) && post_notification_check_string( $path, 'activation_faild', $silent ) && post_notification_check_string( $path, 'address_not_in_database', $silent ) && post_notification_check_string( $path, 'sign_up_again', $silent ) && post_notification_check_string( $path, 'deaktivated', $silent ) && post_notification_check_string( $path, 'no_longer_activated', $silent ) && post_notification_check_string( $path, 'check_email', $silent ) && post_notification_check_string( $path, 'wrong_captcha', $silent ) && post_notification_check_string( $path, 'all', $silent ) && post_notification_check_string( $path, 'saved', $silent ) ) ) {
         return false;
     }
 
@@ -91,7 +119,6 @@ function post_notification_admin_sub() {
                 'pn_url'                     => array( 'type' => 'text', 'default' => '', 'option_name' => 'url' ),
                 'page_meta'                  => array( 'type' => 'text', 'default' => 'no' ),
                 'filter_include'             => array( 'type' => 'text', 'default' => 'no' ),
-                'uninstall'                  => array( 'type' => 'text', 'default' => 'no' ),
                 'debug'                      => array( 'type' => 'text', 'default' => 'yes' ),
                 'lock'                       => array( 'type' => 'text', 'default' => 'file' ),
                 'empty_cats'                 => array( 'type' => 'text', 'default' => 'no' ),
@@ -228,6 +255,25 @@ function post_notification_admin_sub() {
 
             // Insert the page
             $post_ID = wp_insert_post( $post_data );
+        }
+
+        // Safer handling for uninstall option
+        $uninstall_choice = isset( $_POST['uninstall_action'] ) ? sanitize_text_field( $_POST['uninstall_action'] ) : 'keep';
+        $set_uninstall    = 'no';
+        if ( $uninstall_choice === 'delete' ) {
+            $ack = ! empty( $_POST['uninstall_ack'] );
+            $confirm = isset( $_POST['uninstall_confirm'] ) ? trim( wp_unslash( $_POST['uninstall_confirm'] ) ) : '';
+            if ( $ack && $confirm === 'DELETE' ) {
+                $set_uninstall = 'yes';
+            } else {
+                echo '<div class="error"><p>' . __( 'Uninstall not armed. Please confirm the checkbox and type DELETE to proceed.', 'post_notification' ) . '</p></div>';
+            }
+        }
+        update_option( 'post_notification_uninstall', $set_uninstall );
+
+        // Continue with rest of processing
+        // Insert the page
+        $post_ID = isset($post_ID) ? $post_ID : null;
 
             // Add page template meta if we are using the template
             if ( get_option( 'post_notification_filter_include' ) === 'no' ) {
@@ -236,7 +282,6 @@ function post_notification_admin_sub() {
 
             // Save the page ID to the URL option
             update_option( 'post_notification_url', $post_ID );
-        }
 
         echo '<H4>' . __( 'Data was updated.', 'post_notification' ) . '</H4>';
     }
@@ -800,16 +845,62 @@ function post_notification_admin_sub() {
             <tr class="pn_row">
                 <th class="pn_th_caption"><?php _e( 'Uninstall:', 'post_notification' ) ?></th>
                 <td class="pn_td">
-                    <select name="uninstall">
-                        <option value="no" <?php echo post_notification_get_selected( 'uninstall', 'no' ); ?>><?php _e( 'No', 'post_notification' ); ?></option>
-                        <option value="yes" <?php echo post_notification_get_selected( 'uninstall', 'yes' ); ?>><?php _e( 'Yes', 'post_notification' ); ?></option>
-                    </select>
+                    <fieldset id="uninstall_section" style="border:1px solid #d63638; padding:10px;">
+                        <legend style="color:#d63638;"><strong><?php _e( 'Danger zone', 'post_notification' ); ?></strong></legend>
+                        <label>
+                            <input type="radio" name="uninstall_action" value="keep" <?php echo checked( get_option( 'post_notification_uninstall', 'no' ), 'no', false ); ?> />
+                            <?php _e( 'Keep data on deactivation (recommended)', 'post_notification' ); ?>
+                        </label>
+                        <br/>
+                        <label>
+                            <input type="radio" name="uninstall_action" value="delete" <?php echo checked( get_option( 'post_notification_uninstall', 'no' ), 'yes', false ); ?> />
+                            <?php _e( 'Delete ALL plugin data on deactivation', 'post_notification' ); ?>
+                        </label>
+                        <div id="uninstall_confirm_wrap" style="margin-top:8px; display:none;">
+                            <p class="description" style="color:#a00; font-weight:bold;">
+                                <?php _e( 'This will permanently delete all Post Notification database tables and options when you deactivate the plugin. This cannot be undone.', 'post_notification' ); ?>
+                            </p>
+                            <label>
+                                <input type="checkbox" name="uninstall_ack" value="1" />
+                                <?php _e( 'I understand that all data will be permanently deleted.', 'post_notification' ); ?>
+                            </label>
+                            <br/>
+                            <label>
+                                <?php _e( 'Type DELETE to confirm:', 'post_notification' ); ?>
+                                <input type="text" name="uninstall_confirm" value="" size="10" autocomplete="off" />
+                            </label>
+                        </div>
+                    </fieldset>
+                    <script>
+                        (function(){
+                            var form = document.getElementById('update');
+                            if (!form) return;
+                            var keep = form.querySelector('input[name="uninstall_action"][value="keep"]');
+                            var del  = form.querySelector('input[name="uninstall_action"][value="delete"]');
+                            var wrap = document.getElementById('uninstall_confirm_wrap');
+                            function update(){
+                                if (del && del.checked){
+                                    wrap.style.display = 'block';
+                                } else {
+                                    wrap.style.display = 'none';
+                                }
+                            }
+                            if (keep) keep.addEventListener('change', update);
+                            if (del) del.addEventListener('change', update);
+                            update();
+                            form.addEventListener('submit', function(e){
+                                if (del && del.checked){
+                                    var ack = form.querySelector('input[name="uninstall_ack"]');
+                                    var conf = form.querySelector('input[name="uninstall_confirm"]');
+                                    if (!ack || !ack.checked || !conf || conf.value !== 'DELETE'){
+                                        e.preventDefault();
+                                        alert('<?php echo esc_js( __( 'To enable uninstall on deactivation, please tick the acknowledgment and type DELETE exactly.', 'post_notification' ) ); ?>');
+                                    }
+                                }
+                            });
+                        })();
+                    </script>
                 </td>
-            </tr>
-            <tr class="pn_row">
-                <th class="pn_th_caption_warning" colspan="2">
-                    <?php _e( 'WARNING: If this option is set, all database entries are deleted upon deactivation. Of course all data is lost.', 'post_notification' ); ?></th>
-
             </tr>
 
             <tr class="pn_row">
