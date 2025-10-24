@@ -395,14 +395,8 @@ function post_notification_sendmail( $maildata, $addr, $code = '', $send = true 
 	$addr = "postnotification@bome.com";
 	if ( $send ) {
 		// Use woocommerce mailer if installed and activated in PN Settings
-		if ( ( is_woocommerce_activated() ) and ( get_option( 'post_notification_use_wc_mailer' ) === 'yes' ) ) {
-
-			post_notification_WC_send_with_custom_from( $addr, $maildata['subject'], $maildata['body'], $maildata['header'], array()  );
-
-		} else {
-			//wordpress
-			$maildata['sent'] = wp_mail( $addr, $maildata['subject'], $maildata['body'], $maildata['header'] );
-		}
+		// Route via configured mailer method (WP, PN SMTP, or WC)
+		$maildata['sent'] = pn_send_mail( $addr, $maildata['subject'], $maildata['body'], $maildata['header'], array() );
 	} else {
 		$maildata['sent'] = false;
 	}

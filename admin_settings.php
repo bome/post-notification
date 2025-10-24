@@ -129,7 +129,13 @@ function post_notification_admin_sub() {
                 'honeypot'                   => array( 'type' => 'text', 'default' => 'no' ),
                 'unsubscribe_email'          => array( 'type' => 'email', 'default' => '' ),
                 'unsubscribe_link_in_header' => array( 'type' => 'text', 'default' => 'no' ),
-                'use_wc_mailer'              => array( 'type' => 'text', 'default' => 'no' ),
+                'mailer_method'              => array( 'type' => 'text', 'default' => 'wp', 'allowed_values' => array('wp','pn_smtp','wc') ),
+                'smtp_host'                  => array( 'type' => 'text', 'default' => '' ),
+                'smtp_port'                  => array( 'type' => 'int', 'default' => 587, 'min' => 1 ),
+                'smtp_secure'                => array( 'type' => 'text', 'default' => 'tls', 'allowed_values' => array('none','ssl','tls') ),
+                'smtp_auth'                  => array( 'type' => 'text', 'default' => 'yes', 'allowed_values' => array('yes','no') ),
+                'smtp_user'                  => array( 'type' => 'text', 'default' => '' ),
+                'smtp_timeout'               => array( 'type' => 'int', 'default' => 30, 'min' => 1 ),
                 // Logging directory settings
                 'log_dir_mode'               => array( 'type' => 'text', 'default' => 'default', 'allowed_values' => array( 'default', 'custom' ) ),
                 'log_dir_custom'             => array( 'type' => 'text', 'default' => '' ),
@@ -200,6 +206,16 @@ function post_notification_admin_sub() {
             }
 
             update_option( $option_name, $sanitized_value );
+        }
+
+        // Handle SMTP password: only update if a non-placeholder, non-empty value submitted
+        if ( isset( $_POST['smtp_pass'] ) ) {
+            $raw_pass = (string) $_POST['smtp_pass'];
+            // Detect placeholder bullets (10 dots) and empty
+            $is_placeholder = ( trim( $raw_pass ) === str_repeat('•', 10) );
+            if ( ! $is_placeholder && $raw_pass !== '' ) {
+                update_option( 'post_notification_smtp_pass', sanitize_text_field( $raw_pass ) );
+            }
         }
 
         // Handle profile and template - requires special file validation
@@ -474,17 +490,82 @@ function post_notification_admin_sub() {
                 </td>
             </tr>
 
-            <?php if ( is_woocommerce_activated() ) { ?>
-                <tr class="pn_row">
-                    <th class="pn_th_caption"><?php _e( 'Use woocommerce mailer (with WC template):', 'post_notification' ); ?></th>
-                    <td class="pn_td">
-                        <select name="use_wc_mailer">
-                            <option value="no" <?php echo post_notification_get_selected( 'use_wc_mailer', 'no' ); ?>><?php _e( 'No', 'post_notification' ); ?></option>
-                            <option value="yes" <?php echo post_notification_get_selected( 'use_wc_mailer', 'yes' ); ?>><?php _e( 'Yes', 'post_notification' ); ?></option>
-                        </select>
-                    </td>
-                </tr>
-            <?php } ?>
+            <tr class="pn_row">
+                <th class="pn_th_caption"><?php _e( 'Email sending method:', 'post_notification' ); ?></th>
+                <td class="pn_td">
+                    <?php $mailer_method = get_option( 'post_notification_mailer_method', 'wp' ); ?>
+                    <label><input type="radio" name="mailer_method" value="wp" <?php echo checked( $mailer_method, 'wp', false ); ?> /> <?php _e( 'Default WordPress mailer (wp_mail)', 'post_notification' ); ?></label><br/>
+                    <label><input type="radio" name="mailer_method" value="pn_smtp" <?php echo checked( $mailer_method, 'pn_smtp', false ); ?> /> <?php _e( 'Post Notification SMTP (PHPMailer direct)', 'post_notification' ); ?></label><br/>
+                    <?php if ( function_exists('is_woocommerce_activated') ? is_woocommerce_activated() : class_exists('WooCommerce') ) : ?>
+                        <label><input type="radio" name="mailer_method" value="wc" <?php echo checked( $mailer_method, 'wc', false ); ?> /> <?php _e( 'WooCommerce mailer (uses WC email template)', 'post_notification' ); ?></label><br/>
+                    <?php endif; ?>
+                    <p class="description">
+                        <?php _e( 'Choose how emails are sent: 1) WordPress default (uses your host’s mail or SMTP plugin), 2) Post Notification’s own SMTP using PHPMailer (configure below), 3) WooCommerce mailer if WooCommerce is installed.', 'post_notification' ); ?>
+                    </p>
+                </td>
+            </tr>
+
+            <tr class="pn_row pn_smtp_settings">
+                <th class="pn_th_caption"><?php _e( 'SMTP settings (for Post Notification SMTP):', 'post_notification' ); ?></th>
+                <td class="pn_td">
+                    <?php
+                    $smtp_host = get_option('post_notification_smtp_host', '');
+                    $smtp_port = (int) get_option('post_notification_smtp_port', 587);
+                    $smtp_secure = get_option('post_notification_smtp_secure', 'tls');
+                    $smtp_auth = get_option('post_notification_smtp_auth', 'yes');
+                    $smtp_user = get_option('post_notification_smtp_user', '');
+                    $smtp_pass = get_option('post_notification_smtp_pass', '');
+                    $smtp_timeout = (int) get_option('post_notification_smtp_timeout', 30);
+                    ?>
+                    <p>
+                        <label><?php _e('Host', 'post_notification'); ?>: <input type="text" name="smtp_host" value="<?php echo esc_attr($smtp_host); ?>" size="40" /></label>
+                        &nbsp;&nbsp;
+                        <label><?php _e('Port', 'post_notification'); ?>: <input type="number" name="smtp_port" value="<?php echo esc_attr($smtp_port); ?>" min="1" max="65535" /></label>
+                        &nbsp;&nbsp;
+                        <label><?php _e('Encryption', 'post_notification'); ?>:
+                            <select name="smtp_secure">
+                                <option value="none" <?php echo selected($smtp_secure, 'none', false); ?>><?php _e('None', 'post_notification'); ?></option>
+                                <option value="ssl" <?php echo selected($smtp_secure, 'ssl', false); ?>>SSL</option>
+                                <option value="tls" <?php echo selected($smtp_secure, 'tls', false); ?>>TLS</option>
+                            </select>
+                        </label>
+                    </p>
+                    <p>
+                        <label><?php _e('Authentication', 'post_notification'); ?>:
+                            <select name="smtp_auth">
+                                <option value="no" <?php echo selected($smtp_auth, 'no', false); ?>><?php _e('No', 'post_notification'); ?></option>
+                                <option value="yes" <?php echo selected($smtp_auth, 'yes', false); ?>><?php _e('Yes', 'post_notification'); ?></option>
+                            </select>
+                        </label>
+                        &nbsp;&nbsp;
+                        <label><?php _e('Username', 'post_notification'); ?>: <input type="text" name="smtp_user" value="<?php echo esc_attr($smtp_user); ?>" size="30" autocomplete="off" /></label>
+                        &nbsp;&nbsp;
+                        <label><?php _e('Password', 'post_notification'); ?>: <input type="password" name="smtp_pass" value="<?php echo $smtp_pass ? esc_attr( str_repeat('•', 10) ) : ''; ?>" size="30" autocomplete="new-password" placeholder="<?php esc_attr_e('Leave blank to keep current', 'post_notification'); ?>" /></label>
+                    </p>
+                    <p>
+                        <label><?php _e('Timeout (seconds)', 'post_notification'); ?>: <input type="number" name="smtp_timeout" value="<?php echo esc_attr($smtp_timeout); ?>" min="1" max="300" /></label>
+                    </p>
+                    <p class="description"><?php _e('These settings are used only when "Post Notification SMTP" is selected above. Make sure your server firewall allows outbound SMTP connections to the configured host and port.', 'post_notification'); ?></p>
+                </td>
+            </tr>
+
+            <script>
+                (function(){
+                    var form = document.getElementById('update');
+                    if (!form) return;
+                    function toggleSmtp(){
+                        var method = form.querySelector('input[name="mailer_method"]:checked');
+                        var rows = form.querySelectorAll('.pn_smtp_settings');
+                        for (var i=0;i<rows.length;i++){
+                            rows[i].style.display = (method && method.value === 'pn_smtp') ? '' : 'none';
+                        }
+                    }
+                    form.addEventListener('change', function(e){
+                        if (e.target && e.target.name === 'mailer_method') toggleSmtp();
+                    });
+                    toggleSmtp();
+                })();
+            </script>
 
             <tr class="pn_row">
                 <td></td>

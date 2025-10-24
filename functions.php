@@ -221,7 +221,129 @@ function post_notification_header( $html = false ) {
 		$header['Content-type'] = "Content-type: text/plain; charset=" . get_option( 'blog_charset' );
 	}
 
-	return $header;
+ return $header;
+}
+
+/**
+ * Unified mail sending helper for Post Notification.
+ * Routes based on setting post_notification_mailer_method: 'wp', 'pn_smtp', 'wc'.
+ * Returns bool for success like wp_mail.
+ */
+function pn_send_mail( $to, $subject, $message, $headers = array(), $attachments = array() ) {
+	$method = get_option( 'post_notification_mailer_method', 'wp' );
+
+	// Normalize headers to array of Name: Value or key=>value
+	if ( is_string( $headers ) ) {
+		$headers = preg_split( "/\r?\n/", $headers );
+	}
+	$headers = is_array( $headers ) ? $headers : array();
+
+	// Helper to parse headers into assoc array
+	$assoc = array();
+	foreach ( $headers as $k => $v ) {
+		if ( is_string( $k ) ) {
+			$assoc[ $k ] = $v;
+		} elseif ( is_string( $v ) && strpos( $v, ':' ) !== false ) {
+			list( $name, $val ) = array( trim( substr( $v, 0, strpos( $v, ':' ) ) ), trim( substr( $v, strpos( $v, ':' ) + 1 ) ) );
+			$assoc[ $name ] = $val;
+		}
+	}
+
+	// WooCommerce mailer
+	if ( $method === 'wc' ) {
+		if ( ( function_exists( 'is_woocommerce_activated' ) && is_woocommerce_activated() ) || class_exists( 'WooCommerce' ) ) {
+			if ( function_exists( 'post_notification_WC_send_with_custom_from' ) ) {
+				return (bool) post_notification_WC_send_with_custom_from( $to, $subject, $message, $headers, (array) $attachments );
+			}
+		}
+		// Fallback to wp_mail if WC not available
+		$method = 'wp';
+	}
+
+	if ( $method === 'pn_smtp' ) {
+		// Use PHPMailer directly
+		if ( class_exists( '\\PHPMailer\\PHPMailer\\PHPMailer' ) ) {
+			$mail = new \PHPMailer\PHPMailer\PHPMailer( true );
+		} elseif ( class_exists( 'PHPMailer' ) ) {
+			$mail = new PHPMailer( true );
+		} else {
+			// As last resort, fall back to wp_mail
+			return (bool) wp_mail( $to, $subject, $message, $headers, $attachments );
+		}
+
+		try {
+			$mail->isSMTP();
+			$mail->Host = (string) get_option( 'post_notification_smtp_host', '' );
+			$mail->Port = (int) get_option( 'post_notification_smtp_port', 587 );
+			$secure = (string) get_option( 'post_notification_smtp_secure', 'tls' );
+			if ( $secure === 'none' ) {
+				$mail->SMTPSecure = '';
+			} else {
+				$mail->SMTPSecure = $secure; // 'ssl' or 'tls'
+			}
+			$mail->SMTPAuth = ( get_option( 'post_notification_smtp_auth', 'yes' ) === 'yes' );
+			$mail->Timeout = (int) get_option( 'post_notification_smtp_timeout', 30 );
+			$mail->CharSet = get_option( 'blog_charset', 'UTF-8' );
+
+			$user = (string) get_option( 'post_notification_smtp_user', '' );
+			$pass = (string) get_option( 'post_notification_smtp_pass', '' );
+			if ( $mail->SMTPAuth ) {
+				$mail->Username = $user;
+				$mail->Password = $pass;
+			}
+
+			// From and Reply-To from headers (built by post_notification_header())
+			$from_email = get_option( 'post_notification_from_email' );
+			if ( empty( $from_email ) ) { $from_email = get_option( 'admin_email' ); }
+			$from_name = str_replace( '@@blogname', get_option( 'blogname' ), get_option( 'post_notification_from_name' ) );
+
+			if ( isset( $assoc['From'] ) && preg_match( '/<([^>]+)>/', $assoc['From'], $m ) ) {
+				$from_email = trim( $m[1] );
+				$from_name = trim( preg_replace( '/\s*<[^>]+>.*/', '', $assoc['From'] ) );
+			}
+			$mail->setFrom( $from_email, $from_name );
+			if ( isset( $assoc['Reply-To'] ) && preg_match( '/<([^>]+)>/', $assoc['Reply-To'], $m2 ) ) {
+				$mail->addReplyTo( trim( $m2[1] ) );
+			}
+
+			// Content type
+			$is_html = false;
+			if ( isset( $assoc['Content-type'] ) && stripos( $assoc['Content-type'], 'text/html' ) !== false ) {
+				$is_html = true;
+			}
+			$mail->isHTML( $is_html );
+			$mail->Subject = $subject;
+			$mail->Body = $message;
+			if ( ! $is_html ) {
+				$mail->AltBody = $message;
+			}
+
+			// To may be array
+			$tos = is_array( $to ) ? $to : array( $to );
+			foreach ( $tos as $t ) {
+				if ( is_email( $t ) ) $mail->addAddress( $t );
+			}
+
+			// Custom headers (e.g., List-Unsubscribe)
+			foreach ( $assoc as $name => $val ) {
+				if ( in_array( strtolower( $name ), array( 'from', 'reply-to', 'content-type' ), true ) ) continue;
+				$mail->addCustomHeader( $name, $val );
+			}
+
+			// Attachments
+			foreach ( (array) $attachments as $att ) {
+				$mail->addAttachment( $att );
+			}
+
+			return $mail->send();
+		} catch ( \Exception $e ) {
+			// Fallback
+			return (bool) wp_mail( $to, $subject, $message, $headers, $attachments );
+		}
+	}
+
+	// Default: WordPress
+	return (bool) wp_mail( $to, $subject, $message, $headers, $attachments );
 }
 
 /// Install a theme

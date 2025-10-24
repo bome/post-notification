@@ -264,7 +264,7 @@ function post_notification_page_content() {
 				$mailmsg = str_replace( '@@addr', $addr, $mailmsg );
 				$mailmsg = str_replace( '@@conf_url', $conf_url, $mailmsg );
 
-				wp_mail( $addr, "$blogname - " . get_option( 'post_notification_page_name' ), $mailmsg, post_notification_header() );
+    pn_send_mail( $addr, "$blogname - " . get_option( 'post_notification_page_name' ), $mailmsg, post_notification_header() );
 
 				$content['header'] = $post_notification_strings['registration_successful'];
 				$content['body'] = post_notification_ldfile( 'reg_success.tmpl' );
@@ -283,7 +283,7 @@ function post_notification_page_content() {
 					$conf_url = post_notification_get_mailurl( $addr ) . '&action=unsubscribe';
 					$mailmsg = post_notification_ldfile( 'unsubscribe.tmpl' );
 					$mailmsg = str_replace( array( '@@addr', '@@conf_url' ), array( $addr, $conf_url ), $mailmsg );
-					wp_mail( $addr, "$blogname - " . $post_notification_strings['deaktivated'], $mailmsg, post_notification_header() );
+     pn_send_mail( $addr, "$blogname - " . $post_notification_strings['deaktivated'], $mailmsg, post_notification_header() );
 				}
 
 				$content['header'] = $post_notification_strings['deaktivated'];
