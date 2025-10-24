@@ -761,6 +761,14 @@ function post_notification_admin_sub() {
                 </td>
             </tr>
             <tr class="pn_row">
+                <th class="pn_th_caption">&nbsp;</th>
+                <td class="pn_td">
+                    <button type="button" id="pn_reveal_uninstall" class="button">
+                        <?php _e( 'Reveal uninstall option', 'post_notification' ); ?>
+                    </button>
+                </td>
+            </tr>
+            <tr class="pn_row pn_uninstall_tr" style="display:none;">
                 <th class="pn_th_caption"><?php _e( 'Uninstall:', 'post_notification' ) ?></th>
                 <td class="pn_td">
                     <select name="uninstall">
@@ -769,11 +777,26 @@ function post_notification_admin_sub() {
                     </select>
                 </td>
             </tr>
-            <tr class="pn_row">
+            <tr class="pn_row pn_uninstall_tr" style="display:none;">
                 <th class="pn_th_caption_warning" colspan="2">
                     <?php _e( 'WARNING: If this option is set, all database entries are deleted upon deactivation. Of course all data is lost.', 'post_notification' ); ?></th>
 
             </tr>
+            <script type="text/javascript">
+                (function(){
+                    var btn = document.getElementById('pn_reveal_uninstall');
+                    if (!btn) return;
+                    btn.addEventListener('click', function(){
+                        var ok = window.confirm('<?php echo esc_js( __( 'Please confirm: Enabling this option will delete all Post Notification data on plugin deactivation. Continue?', 'post_notification' ) ); ?>');
+                        if (!ok) { return; }
+                        var rows = document.querySelectorAll('.pn_uninstall_tr');
+                        for (var i = 0; i < rows.length; i++) {
+                            rows[i].style.display = (rows[i].tagName && rows[i].tagName.toLowerCase() === 'tr') ? 'table-row' : 'block';
+                        }
+                        btn.parentNode.parentNode.style.display = 'none';
+                    });
+                })();
+            </script>
 
             <tr class="pn_row">
                 <th class="pn_th_caption">&nbsp;</th>
