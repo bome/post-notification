@@ -996,6 +996,16 @@ function pn_list_get_id_by_slug( string $slug ) {
     return $id ?: 0;
 }
 
+/** Get list display name by slug (or empty string if not found). */
+function pn_list_get_name_by_slug( string $slug ): string {
+    global $wpdb;
+    $slug = sanitize_key( $slug );
+    if ( $slug === '' ) return '';
+    $t_lists = $wpdb->prefix . 'post_notification_lists';
+    $name = (string) $wpdb->get_var( $wpdb->prepare( "SELECT name FROM $t_lists WHERE slug=%s", $slug ) );
+    return is_string( $name ) ? $name : '';
+}
+
 /**
  * Create a list if it does not exist.
  * @return int List ID (existing or newly created), 0 on failure.
@@ -1029,6 +1039,65 @@ function pn_list_create( string $list_slug, array $args = array() ): int {
 /** Check if a list exists by slug. */
 function pn_list_exists( string $list_slug ): bool {
     return pn_list_get_id_by_slug( $list_slug ) > 0;
+}
+
+/**
+ * Rename a list's display name by slug.
+ *
+ * @param string $list_slug
+ * @param array  $args ['name' => string]
+ * @return bool True on success
+ */
+function pn_list_rename( string $list_slug, array $args = array() ): bool {
+    global $wpdb;
+    $slug = sanitize_key( $list_slug );
+    if ( $slug === '' ) return false;
+    $new_name = isset( $args['name'] ) ? (string) $args['name'] : '';
+    $new_name = $new_name !== '' ? sanitize_text_field( $new_name ) : '';
+    if ( $new_name === '' ) return false;
+
+    $t_lists = $wpdb->prefix . 'post_notification_lists';
+    $id = pn_list_get_id_by_slug( $slug );
+    if ( ! $id ) return false;
+    $old_name = pn_list_get_name_by_slug( $slug );
+    $updated = $wpdb->update( $t_lists, array( 'name' => $new_name ), array( 'id' => $id ), array( '%s' ), array( '%d' ) );
+    if ( $updated === false ) return false;
+    /** Action: fired after a list was renamed. */
+    do_action( 'post_notification_list_renamed', (int) $id, $slug, $old_name, $new_name );
+    return true;
+}
+
+/**
+ * Ensure a list exists and (optionally) its display name matches.
+ * Applies a policy filter: `pn/list/rename_mode` → 'log' | 'enforce' | 'ignore'. Default 'log'.
+ *
+ * @param string $list_slug
+ * @param array  $args ['name' => string]
+ * @return int|bool List ID on success, false on failure
+ */
+function pn_list_ensure( string $list_slug, array $args = array() ) {
+    $id = pn_list_create( $list_slug, $args );
+    if ( ! $id ) return false;
+
+    // Optionally align display name according to policy
+    $desired_name = isset( $args['name'] ) && $args['name'] !== '' ? (string) $args['name'] : '';
+    if ( $desired_name === '' ) return $id;
+
+    $current_name = pn_list_get_name_by_slug( $list_slug );
+    if ( $current_name !== '' && $current_name !== $desired_name ) {
+        $mode = apply_filters( 'pn/list/rename_mode', 'log', $list_slug, $current_name, $desired_name );
+        if ( $mode === 'enforce' ) {
+            pn_list_rename( $list_slug, array( 'name' => $desired_name ) );
+        } elseif ( $mode === 'log' ) {
+            // Best-effort logging without introducing a hard dependency on any logger
+            if ( function_exists( 'error_log' ) ) {
+                @error_log( sprintf('[PostNotification] List name differs (slug=%s, current="%s", desired="%s")', $list_slug, $current_name, $desired_name) );
+            }
+        }
+        // 'ignore' → do nothing
+    }
+
+    return $id;
 }
 
 /** Add a user to a list (idempotent). */
