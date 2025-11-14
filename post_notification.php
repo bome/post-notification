@@ -96,6 +96,217 @@ if ( ! defined( 'post_notification_path' ) ) {
 //Include all the helper functions
 require_once( POST_NOTIFICATION_PATH . "functions.php" );
 
+// -----------------------------
+// Custom Post Type: pn_mailing
+// -----------------------------
+
+add_action( 'init', function () {
+    $labels = array(
+        'name'               => _x( 'Mailings', 'post type general name', 'post_notification' ),
+        'singular_name'      => _x( 'Mailing', 'post type singular name', 'post_notification' ),
+        'menu_name'          => _x( 'Mailings', 'admin menu', 'post_notification' ),
+        'name_admin_bar'     => _x( 'Mailing', 'add new on admin bar', 'post_notification' ),
+        'add_new'            => _x( 'Add New', 'mailing', 'post_notification' ),
+        'add_new_item'       => __( 'Add New Mailing', 'post_notification' ),
+        'new_item'           => __( 'New Mailing', 'post_notification' ),
+        'edit_item'          => __( 'Edit Mailing', 'post_notification' ),
+        'view_item'          => __( 'View Mailing', 'post_notification' ),
+        'all_items'          => __( 'All Mailings', 'post_notification' ),
+        'search_items'       => __( 'Search Mailings', 'post_notification' ),
+        'not_found'          => __( 'No mailings found.', 'post_notification' ),
+        'not_found_in_trash' => __( 'No mailings found in Trash.', 'post_notification' ),
+    );
+
+    register_post_type( 'pn_mailing', array(
+        'labels'             => $labels,
+        'public'             => false,
+        'exclude_from_search'=> true,
+        'publicly_queryable' => false,
+        'show_ui'            => true,
+        'show_in_menu'       => true,
+        'show_in_rest'       => false,
+        'supports'           => array( 'title', 'editor' ),
+        'capability_type'    => 'post',
+        'map_meta_cap'       => true,
+        'menu_position'      => 26,
+        'menu_icon'          => 'dashicons-email-alt',
+    ) );
+} );
+
+// Metabox: Verteilerlisten + Senden-Button
+add_action( 'add_meta_boxes', function() {
+    add_meta_box( 'pn_mailing_lists', __( 'Verteilerlisten', 'post_notification' ), 'pn_mailing_render_lists_metabox', 'pn_mailing', 'side', 'high' );
+    add_meta_box( 'pn_mailing_send', __( 'Versand', 'post_notification' ), 'pn_mailing_render_send_metabox', 'pn_mailing', 'side', 'high' );
+} );
+
+function pn_mailing_render_lists_metabox( WP_Post $post ) {
+    wp_nonce_field( 'pn_mailing_meta', 'pn_mailing_meta_nonce' );
+    $selected = (array) get_post_meta( $post->ID, '_pn_mailing_lists', true );
+    // Fetch lists via API
+    if ( ! function_exists( 'pn_list_get_lists' ) ) {
+        echo '<p>' . esc_html__( 'List API not available.', 'post_notification' ) . '</p>';
+        return;
+    }
+    $lists = pn_list_get_lists();
+    if ( empty( $lists ) ) {
+        echo '<p>' . esc_html__( 'No lists defined yet.', 'post_notification' ) . '</p>';
+        return;
+    }
+    echo '<div class="pn-mailing-lists">';
+    foreach ( $lists as $list ) {
+        $slug = isset( $list['slug'] ) ? $list['slug'] : ( $list->slug ?? '' );
+        $name = isset( $list['name'] ) ? $list['name'] : ( $list->name ?? $slug );
+        if ( ! $slug ) { continue; }
+        $checked = in_array( $slug, $selected, true ) ? 'checked' : '';
+        echo '<label style="display:block;margin:2px 0;">';
+        echo '<input type="checkbox" name="pn_mailing_lists[]" value="' . esc_attr( $slug ) . '" ' . $checked . ' /> ' . esc_html( $name );
+        echo '</label>';
+    }
+    echo '</div>';
+}
+
+function pn_mailing_render_send_metabox( WP_Post $post ) {
+    $sent = (bool) get_post_meta( $post->ID, '_pn_mailing_sent', true );
+    if ( $sent ) {
+        echo '<p><strong>' . esc_html__( 'Dieses Mailing wurde bereits versendet.', 'post_notification' ) . '</strong></p>';
+        echo '<p>' . esc_html__( 'Bearbeiten ist gesperrt. Nutzen Sie „Duplizieren“, um eine neue Version zu erstellen.', 'post_notification' ) . '</p>';
+    } else {
+        $url = wp_nonce_url( add_query_arg( array( 'pn_mailing_send' => $post->ID ) ), 'pn_mailing_send_' . $post->ID );
+        echo '<a href="' . esc_url( $url ) . '" class="button button-primary">' . esc_html__( 'Jetzt senden', 'post_notification' ) . '</a>';
+    }
+}
+
+// Save lists
+add_action( 'save_post_pn_mailing', function( $post_id, $post, $update ) {
+    if ( ! isset( $_POST['pn_mailing_meta_nonce'] ) || ! wp_verify_nonce( $_POST['pn_mailing_meta_nonce'], 'pn_mailing_meta' ) ) {
+        return;
+    }
+    if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) { return; }
+    if ( (bool) get_post_meta( $post_id, '_pn_mailing_sent', true ) ) { return; }
+    $lists = isset( $_POST['pn_mailing_lists'] ) && is_array( $_POST['pn_mailing_lists'] ) ? array_map( 'sanitize_key', (array) $_POST['pn_mailing_lists'] ) : array();
+    update_post_meta( $post_id, '_pn_mailing_lists', array_values( array_unique( $lists ) ) );
+}, 10, 3 );
+
+// Handle send action via admin
+add_action( 'admin_init', function() {
+    if ( empty( $_GET['pn_mailing_send'] ) ) { return; }
+    $post_id = absint( $_GET['pn_mailing_send'] );
+    if ( ! current_user_can( 'edit_post', $post_id ) ) { return; }
+    check_admin_referer( 'pn_mailing_send_' . $post_id );
+    pn_send_mailing( $post_id );
+    wp_redirect( get_edit_post_link( $post_id, 'raw' ) );
+    exit;
+} );
+
+// Lock sent mailings: prevent further edits
+add_filter( 'map_meta_cap', function( $caps, $cap, $user_id, $args ) {
+    if ( in_array( $cap, array( 'edit_post', 'delete_post' ), true ) ) {
+        $post_id = isset( $args[0] ) ? (int) $args[0] : 0;
+        if ( $post_id && get_post_type( $post_id ) === 'pn_mailing' && get_post_meta( $post_id, '_pn_mailing_sent', true ) ) {
+            return array( 'do_not_allow' );
+        }
+    }
+    return $caps;
+}, 10, 4 );
+
+// Row action: Duplicate
+add_filter( 'post_row_actions', function( $actions, $post ) {
+    if ( $post->post_type !== 'pn_mailing' ) { return $actions; }
+    $url = wp_nonce_url( add_query_arg( array( 'action' => 'pn_mailing_duplicate', 'post' => $post->ID ), admin_url( 'edit.php?post_type=pn_mailing' ) ), 'pn_mailing_duplicate_' . $post->ID );
+    $actions['pn_mailing_duplicate'] = '<a href="' . esc_url( $url ) . '">' . esc_html__( 'Duplizieren', 'post_notification' ) . '</a>';
+    return $actions;
+}, 10, 2 );
+
+add_action( 'admin_init', function() {
+    if ( isset( $_GET['action'], $_GET['post'] ) && $_GET['action'] === 'pn_mailing_duplicate' ) {
+        $post_id = absint( $_GET['post'] );
+        check_admin_referer( 'pn_mailing_duplicate_' . $post_id );
+        if ( ! current_user_can( 'edit_post', $post_id ) ) { return; }
+        $post = get_post( $post_id );
+        $new  = array(
+            'post_type'   => 'pn_mailing',
+            'post_title'  => $post->post_title . ' (Copy)',
+            'post_content'=> $post->post_content,
+            'post_status' => 'draft',
+        );
+        $new_id = wp_insert_post( $new );
+        if ( $new_id && ! is_wp_error( $new_id ) ) {
+            delete_post_meta( $new_id, '_pn_mailing_sent' );
+            $lists = (array) get_post_meta( $post_id, '_pn_mailing_lists', true );
+            if ( $lists ) { update_post_meta( $new_id, '_pn_mailing_lists', $lists ); }
+            wp_redirect( get_edit_post_link( $new_id, 'raw' ) );
+            exit;
+        }
+    }
+} );
+
+/**
+ * Versandroutine für ein pn_mailing.
+ * - Holt ausgewählte Listen
+ * - Ermittelt zugehörige User IDs
+ * - Rendert personalisierte E-Mail und sendet
+ * - Markiert Mailing als gesendet und sperrt weitere Edits
+ */
+function pn_send_mailing( int $post_id ): void {
+    $logger = get_pn_logger();
+    $post   = get_post( $post_id );
+    if ( ! $post || $post->post_type !== 'pn_mailing' ) { return; }
+    if ( get_post_meta( $post_id, '_pn_mailing_sent', true ) ) { return; }
+
+    $lists = (array) get_post_meta( $post_id, '_pn_mailing_lists', true );
+    $user_ids = array();
+    if ( function_exists( 'pn_list_get_users' ) ) {
+        foreach ( $lists as $slug ) {
+            $ids = pn_list_get_users( $slug );
+            if ( is_array( $ids ) ) { $user_ids = array_merge( $user_ids, $ids ); }
+        }
+    }
+    $user_ids = array_values( array_unique( array_map( 'intval', $user_ids ) ) );
+
+    // Render base body once from the post content (non-personalized portion)
+    require_once POST_NOTIFICATION_PATH . 'sendmail.php';
+    $base_html = pn_render_content_for_email( $post_id, 'exclude' );
+
+    $subject = (string) get_option( 'post_notification_subject', '@@blogname: @@title' );
+    $subject = str_replace(
+        array( '@@blogname', '@@title' ),
+        array( get_bloginfo( 'name' ), wp_strip_all_tags( get_the_title( $post_id ) ) ),
+        $subject
+    );
+
+    $header = post_notification_header( true ); // send HTML by default for mailings
+
+    $sent_count = 0;
+    foreach ( $user_ids as $uid ) {
+        $user = get_userdata( $uid );
+        if ( ! $user || empty( $user->user_email ) ) { continue; }
+        $html = pn_personalize_html( $base_html, $user, $post_id );
+        $body = $html; // no text alt for now
+        $ok   = pn_send_mail( $user->user_email, $subject, $body, $header, array() );
+        if ( $ok ) { $sent_count++; }
+    }
+
+    update_post_meta( $post_id, '_pn_mailing_sent', 1 );
+    $logger && $logger->info( 'Mailing sent', array( 'tag' => 'Mailing', 'post_id' => $post_id, 'lists' => $lists, 'recipients' => count( $user_ids ), 'sent' => $sent_count ) );
+}
+
+/**
+ * Personalisierung: ersetzt Standard-Tokens und erlaubt Erweiterung über Hooks.
+ */
+function pn_personalize_html( string $html, WP_User $user, int $post_id ): string {
+    $replacements = array(
+        '[pn:user_email]'        => $user->user_email,
+        '[pn:user_display_name]' => $user->display_name,
+        '[pn:site_name]'         => get_bloginfo( 'name' ),
+        '[pn:site_url]'          => home_url( '/' ),
+    );
+    $replacements = apply_filters( 'post_notification_personalize_tokens', $replacements, $user, $post_id );
+    $out = strtr( $html, $replacements );
+    /** Allow final HTML mangling by other plugins */
+    $out = apply_filters( 'post_notification_render_shortcodes', $out, $user, $post_id );
+    return $out;
+}
+
 /**
  * This function returns the header of Post Notification as a string
  */

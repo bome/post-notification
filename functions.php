@@ -348,14 +348,16 @@ function pn_send_mail( $to, $subject, $message, $headers = array(), $attachments
 
 /// Install a theme
 function post_notification_installtheme() {
-	if ( get_option( 'post_notification_filter_include' ) === 'no' ) {
-		$src  = POST_NOTIFICATION_PATH . 'post_notification_template.php';
-		$dest = ABSPATH . 'wp-content/themes/' . get_option( 'template' ) . '/post_notification_template.php';
-		if ( ! @file_exists( $dest ) ) {
-			if ( ! @copy( $src, $dest ) ) {
-				return $dest;
-			}
-		}
+    if ( get_option( 'post_notification_filter_include' ) === 'no' ) {
+        $src  = POST_NOTIFICATION_PATH . 'post_notification_template.php';
+        // Prefer API to build theme path, avoid direct ABSPATH dependency
+        $theme_root = function_exists( 'get_theme_root' ) ? trailingslashit( get_theme_root() ) : ( defined( 'WP_CONTENT_DIR' ) ? trailingslashit( WP_CONTENT_DIR ) . 'themes/' : '' );
+        $dest = $theme_root . get_option( 'template' ) . '/post_notification_template.php';
+        if ( ! @file_exists( $dest ) ) {
+            if ( ! @copy( $src, $dest ) ) {
+                return $dest;
+            }
+        }
 	}
 
 	return '';
@@ -972,4 +974,123 @@ function pn_get_filter_description( string $raw_id ): array {
 		'desc'           => 'Unknown/3rd-party filter. Likely intended for web rendering; may not be email-friendly.',
 		'recommendation' => '⚠️ Not classified – check manually.',
 	];
+}
+
+// ==============================================
+// Mailing list API (internal, WP‑style function names)
+// Storage: custom tables created in install.php
+// - wp_post_notification_lists (id, slug, name)
+// - wp_post_notification_list_users (list_id, user_id)
+// Users are identified by WP user IDs (integers)
+// ==============================================
+
+/**
+ * Get list ID by slug.
+ */
+function pn_list_get_id_by_slug( string $slug ) {
+    global $wpdb;
+    $slug = sanitize_key( $slug );
+    if ( $slug === '' ) return 0;
+    $t_lists = $wpdb->prefix . 'post_notification_lists';
+    $id = (int) $wpdb->get_var( $wpdb->prepare( "SELECT id FROM $t_lists WHERE slug=%s", $slug ) );
+    return $id ?: 0;
+}
+
+/**
+ * Create a list if it does not exist.
+ * @return int List ID (existing or newly created), 0 on failure.
+ */
+function pn_list_create( string $list_slug, array $args = array() ): int {
+    global $wpdb;
+    $slug = sanitize_key( $list_slug );
+    if ( $slug === '' ) return 0;
+    $name = isset( $args['name'] ) && $args['name'] !== '' ? sanitize_text_field( $args['name'] ) : $slug;
+
+    $t_lists = $wpdb->prefix . 'post_notification_lists';
+    $existing = pn_list_get_id_by_slug( $slug );
+    if ( $existing ) {
+        // Optionally update name
+        $wpdb->update( $t_lists, array( 'name' => $name ), array( 'id' => $existing ) );
+        return (int) $existing;
+    }
+    $ok = $wpdb->insert( $t_lists, array(
+        'slug'       => $slug,
+        'name'       => $name,
+        'created_at' => current_time( 'mysql' ),
+    ), array( '%s','%s','%s' ) );
+    if ( $ok ) {
+        $id = (int) $wpdb->insert_id;
+        do_action( 'post_notification_list_created', $id, $slug, $name );
+        return $id;
+    }
+    return 0;
+}
+
+/** Check if a list exists by slug. */
+function pn_list_exists( string $list_slug ): bool {
+    return pn_list_get_id_by_slug( $list_slug ) > 0;
+}
+
+/** Add a user to a list (idempotent). */
+function pn_list_add_user( string $list_slug, $user ): bool {
+    global $wpdb;
+    $list_id = pn_list_get_id_by_slug( $list_slug );
+    if ( ! $list_id ) { $list_id = pn_list_create( $list_slug ); }
+    if ( ! $list_id ) return false;
+    $user_id = is_object( $user ) ? (int) $user->ID : (int) $user;
+    if ( $user_id <= 0 ) return false;
+    $t_rel = $wpdb->prefix . 'post_notification_list_users';
+    // Upsert-like behavior
+    $exists = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM $t_rel WHERE list_id=%d AND user_id=%d", $list_id, $user_id ) );
+    if ( $exists ) return true;
+    $ok = $wpdb->insert( $t_rel, array(
+        'list_id'  => $list_id,
+        'user_id'  => $user_id,
+        'added_at' => current_time( 'mysql' ),
+    ), array( '%d','%d','%s' ) );
+    if ( $ok ) do_action( 'post_notification_list_user_added', $list_id, $user_id );
+    return (bool) $ok;
+}
+
+/** Remove a user from a list. */
+function pn_list_remove_user( string $list_slug, $user ): bool {
+    global $wpdb;
+    $list_id = pn_list_get_id_by_slug( $list_slug );
+    if ( ! $list_id ) return false;
+    $user_id = is_object( $user ) ? (int) $user->ID : (int) $user;
+    if ( $user_id <= 0 ) return false;
+    $t_rel = $wpdb->prefix . 'post_notification_list_users';
+    $ok = $wpdb->delete( $t_rel, array( 'list_id' => $list_id, 'user_id' => $user_id ), array( '%d','%d' ) );
+    if ( $ok ) do_action( 'post_notification_list_user_removed', $list_id, $user_id );
+    return (bool) $ok;
+}
+
+/** Check if user is in list. */
+function pn_list_user_is_subscribed( string $list_slug, $user ): bool {
+    global $wpdb;
+    $list_id = pn_list_get_id_by_slug( $list_slug );
+    if ( ! $list_id ) return false;
+    $user_id = is_object( $user ) ? (int) $user->ID : (int) $user;
+    if ( $user_id <= 0 ) return false;
+    $t_rel = $wpdb->prefix . 'post_notification_list_users';
+    $cnt = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM $t_rel WHERE list_id=%d AND user_id=%d", $list_id, $user_id ) );
+    return $cnt > 0;
+}
+
+/** Get user IDs of a list. */
+function pn_list_get_users( string $list_slug ): array {
+    global $wpdb;
+    $list_id = pn_list_get_id_by_slug( $list_slug );
+    if ( ! $list_id ) return array();
+    $t_rel = $wpdb->prefix . 'post_notification_list_users';
+    $ids = $wpdb->get_col( $wpdb->prepare( "SELECT user_id FROM $t_rel WHERE list_id=%d ORDER BY user_id ASC", $list_id ) );
+    return array_map( 'intval', (array) $ids );
+}
+
+/** Get all lists (as assoc arrays with id, slug, name). */
+function pn_list_get_lists(): array {
+    global $wpdb;
+    $t_lists = $wpdb->prefix . 'post_notification_lists';
+    $rows = $wpdb->get_results( "SELECT id, slug, name FROM $t_lists ORDER BY name ASC", 'ARRAY_A' );
+    return is_array( $rows ) ? $rows : array();
 }

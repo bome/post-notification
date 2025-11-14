@@ -9,17 +9,21 @@
 
 //install stuff
 function post_notification_install() {
-	global $wpdb;
-	$t_emails = $wpdb->prefix . 'post_notification_emails';
-	$t_posts  = $wpdb->prefix . 'post_notification_posts';
-	$t_cats   = $wpdb->prefix . 'post_notification_cats';
+    global $wpdb;
+    $t_emails = $wpdb->prefix . 'post_notification_emails';
+    $t_posts  = $wpdb->prefix . 'post_notification_posts';
+    $t_cats   = $wpdb->prefix . 'post_notification_cats';
+    $t_lists  = $wpdb->prefix . 'post_notification_lists';
+    $t_list_users = $wpdb->prefix . 'post_notification_list_users';
 
 	//******************************************//
 	//**  Create WPPRAEFIX_post_notification table   **//
 	//******************************************//
-	if ( ! function_exists( 'maybe_create_table' ) ) {
-		require_once( ABSPATH . 'wp-admin/install-helper.php' );
-	}
+ if ( ! function_exists( 'maybe_create_table' ) ) {
+        if ( defined( 'ABSPATH' ) ) {
+            require_once ABSPATH . 'wp-admin/install-helper.php';
+        }
+    }
 
 	$sql = "CREATE TABLE $t_emails (
 				  id int( 11 ) NOT NULL auto_increment,
@@ -31,7 +35,7 @@ function post_notification_install() {
 				  PRIMARY KEY  ( id )   
 		   )";
 
-	maybe_create_table( $t_posts, $sql );
+ maybe_create_table( $t_posts, $sql );
 
 	$sql = "ALTER TABLE $t_emails ADD subscribe_ip INT UNSIGNED NOT NULL default 0";
 	maybe_add_column( $t_emails, 'subscribe_ip', $sql );
@@ -56,7 +60,7 @@ function post_notification_install() {
 	maybe_add_column( $t_posts, 'date_saved', $sql );
 
 	//This is in an if-statement, because auf the insert-statement.
-	if ( $wpdb->get_var( "SHOW TABLES LIKE '$t_cats'" ) == null ) {
+ if ( $wpdb->get_var( "SHOW TABLES LIKE '$t_cats'" ) == null ) {
 		$sql = "CREATE TABLE $t_cats (
 					id int( 11 ) NOT NULL,
 					cat_id bigint(20) NOT NULL 
@@ -71,7 +75,7 @@ function post_notification_install() {
 					WHERE   NOT EXISTS (SELECT 1 
 										FROM   $t_cats c 
 										WHERE c.id = e.id )" );
-	}
+ }
 
 
 	//This actually belongs into the create statement but it's easier to maintain this way
@@ -105,9 +109,42 @@ function post_notification_install() {
 	foreach ( $indexlist as $indexrow ) {
 		$index[] = $indexrow->Column_name;
 	}
-	if ( ! in_array( 'notification_sent', $index, true ) ) {
-		$wpdb->query( " ALTER TABLE $t_posts ADD INDEX ( notification_sent )" );
-	}
+ if ( ! in_array( 'notification_sent', $index, true ) ) {
+        $wpdb->query( " ALTER TABLE $t_posts ADD INDEX ( notification_sent )" );
+    }
+
+    //************************************************//
+    //**  Create mailing list tables (delta-safe)    **//
+    //************************************************//
+
+    // Lists table
+    $sql = "CREATE TABLE $t_lists (
+                id bigint(20) unsigned NOT NULL auto_increment,
+                slug varchar(190) NOT NULL,
+                name varchar(190) NOT NULL,
+                created_at datetime NOT NULL default '0000-00-00 00:00:00',
+                PRIMARY KEY  (id),
+                UNIQUE KEY slug (slug)
+           ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
+    maybe_create_table( $t_lists, $sql );
+
+    // List-Users junction table (only WP users)
+    $sql = "CREATE TABLE $t_list_users (
+                list_id bigint(20) unsigned NOT NULL,
+                user_id bigint(20) unsigned NOT NULL,
+                added_at datetime NOT NULL default '0000-00-00 00:00:00',
+                PRIMARY KEY (list_id, user_id),
+                KEY user_id (user_id)
+           ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
+    maybe_create_table( $t_list_users, $sql );
+
+    // Add indexes if missing (delta)
+    $index = array();
+    $indexlist = $wpdb->get_results( "SHOW INDEX FROM $t_list_users" );
+    foreach ( $indexlist as $indexrow ) { $index[] = $indexrow->Column_name; }
+    if ( ! in_array( 'user_id', $index, true ) ) {
+        $wpdb->query( " ALTER TABLE $t_list_users ADD INDEX ( user_id )" );
+    }
 
 
 	//}
@@ -146,22 +183,21 @@ function post_notification_install() {
 	add_option( 'post_notification_empty_cats', 'no', 'Whether to show empty cats', 'no' );
 	add_option( 'post_notification_show_cats', 'yes', 'Whether to show cats', 'no' );
 	add_option( 'post_notification_subscribers', '0', 'Number of Subscribers', 'yes' );
-	add_option( 'post_notification_auto_subscribe', 'yes', 'Auto Subscribe when regist new user', 'no' );
+ add_option( 'post_notification_auto_subscribe', 'yes', 'Auto Subscribe when regist new user', 'no' );
 
-	if ( is_dir( POST_NOTIFICATION_PATH . WPLANG ) ) {
-		$profile = WPLANG;
-	} else {
-		$profile = 'en_US';
-	}
-	add_option( 'post_notification_profile', $profile, 'The Profile-dir to use' );
+    $locale  = function_exists( 'get_locale' ) ? get_locale() : 'en_US';
+    $profile = is_dir( POST_NOTIFICATION_PATH . $locale ) ? $locale : 'en_US';
+    add_option( 'post_notification_profile', $profile, 'The Profile-dir to use' );
 }
 
 function post_notification_uninstall() {
-	global $wpdb;
+    global $wpdb;
 
-	$t_emails = $wpdb->prefix . 'post_notification_emails';
-	$t_posts  = $wpdb->prefix . 'post_notification_posts';
-	$t_cats   = $wpdb->prefix . 'post_notification_cats';
+    $t_emails = $wpdb->prefix . 'post_notification_emails';
+    $t_posts  = $wpdb->prefix . 'post_notification_posts';
+    $t_cats   = $wpdb->prefix . 'post_notification_cats';
+    $t_lists  = $wpdb->prefix . 'post_notification_lists';
+    $t_list_users = $wpdb->prefix . 'post_notification_list_users';
 
 	if ( get_option( 'post_notification_uninstall' ) !== 'yes' ) {
 		return;
@@ -170,7 +206,10 @@ function post_notification_uninstall() {
 	//
 	$wpdb->query( "DROP TABLE $t_emails" );
 	$wpdb->query( "DROP TABLE $t_posts" );
-	$wpdb->query( "DROP TABLE $t_cats" );
+ $wpdb->query( "DROP TABLE $t_cats" );
+ // New mailing list tables
+ $wpdb->query( "DROP TABLE IF EXISTS $t_list_users" );
+ $wpdb->query( "DROP TABLE IF EXISTS $t_lists" );
 
 	//delete all options
 	$wpdb->query( "DELETE FROM $wpdb->options WHERE option_name LIKE 'post_notification%'" );
