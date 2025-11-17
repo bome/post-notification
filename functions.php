@@ -65,7 +65,7 @@ function post_notification_date2mysql( $unixtimestamp = 0 ) {
 /**
  * This function returns the SQL-statement to select all the posts which are to be sent.
  *
- * @param future Also list posts published in the future
+ * @paramfuture Also list posts published in the future
  */
 function post_notification_sql_posts_to_send( $future = false ) {
 	global $wpdb;
@@ -553,27 +553,31 @@ function post_notification_get_code( $addr, $code = '' ) {
 		$query    = $wpdb->get_results( "SELECT id, act_code FROM $t_emails WHERE email_addr = '" . $addr . "'" );
 		$query    = $query[0];
 
-		//Get Activation Code
-		if ( ( $query->id == '' ) || ( strlen( $query->act_code ) != 32 ) ) { //Reuse the code
-			mt_srand( (double) microtime() * 1000000 );
-			$code = md5( mt_rand( 100000, 99999999 ) . time() );
-			if ( $query->id == '' ) {
-				$ip = sprintf( '%u', ip2long( $_SERVER['REMOTE_ADDR'] ) );
-				if ( $ip < 0 || empty( $ip ) ) {
-					$ip = 0;
-				} //This has changed with php 5
-				$wpdb->query(
-					"INSERT INTO $t_emails (email_addr,date_subscribed, act_code, subscribe_ip) " .
-					"VALUES ('" . $addr . "','" . post_notification_date2mysql() . "', '$code', $ip  )"
-				);
-			} else {
-				$wpdb->query(
-					"UPDATE $t_emails SET act_code = '$code' WHERE email_addr = '" . $addr . "'"
-				);
-			}
-		} else {
-			$code = $query->act_code;
-		}
+  //Get Activation Code
+  if ( ( $query->id == '' ) || ( strlen( $query->act_code ) != 32 ) ) { //Reuse the code
+      mt_srand( (double) microtime() * 1000000 );
+      $code = md5( mt_rand( 100000, 99999999 ) . time() );
+      if ( $query->id == '' ) {
+          // Store subscribe_ip as string (supports IPv4/IPv6); validate input
+          $remote_ip = isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '';
+          $ip = filter_var( $remote_ip, FILTER_VALIDATE_IP ) ? $remote_ip : '';
+          $wpdb->query(
+              $wpdb->prepare(
+                  "INSERT INTO $t_emails (email_addr,date_subscribed, act_code, subscribe_ip) VALUES (%s, %s, %s, %s)",
+                  $addr,
+                  post_notification_date2mysql(),
+                  $code,
+                  $ip
+              )
+          );
+      } else {
+          $wpdb->query(
+              "UPDATE $t_emails SET act_code = '$code' WHERE email_addr = '" . $addr . "'"
+          );
+      }
+  } else {
+      $code = $query->act_code;
+  }
 	}
 
 	return $code;
@@ -981,8 +985,113 @@ function pn_get_filter_description( string $raw_id ): array {
 // Storage: custom tables created in install.php
 // - wp_post_notification_lists (id, slug, name)
 // - wp_post_notification_list_users (list_id, user_id)
+// - wp_post_notification_emails (id, email_addr, gets_mail, last_modified, date_subscribed, act_code, subscribe_ip)
 // Users are identified by WP user IDs (integers)
 // ==============================================
+
+/**
+ * Format an IP value for display in admin/UI.
+ * Supports legacy integer (IPv4), textual IPv4/IPv6, and binary (inet_ntop).
+ * Returns an empty string for empty/invalid inputs.
+ *
+ * @param mixed $value
+ * @return string
+ */
+function pn_format_ip_for_display( $value ): string {
+    // Empty
+    if ($value === null || $value === '' || $value === false) {
+        return '';
+    }
+
+    // Numeric legacy IPv4 (stored as int)
+    if (is_int($value) || (is_string($value) && ctype_digit($value))) {
+        $intVal = (int) $value;
+        if ($intVal >= 0) {
+            $ip = @long2ip($intVal);
+            if ($ip !== false && filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+                return $ip;
+            }
+        }
+        // fallthrough to generic sanitize below
+    }
+
+    // Binary packed IP (4 or 16 bytes)
+    if (is_string($value) && strlen($value) > 0 && preg_match('/^[\x00-\xff]+$/', $value)) {
+        $len = strlen($value);
+        if ($len === 4 || $len === 16) {
+            if (function_exists('inet_ntop')) {
+                $ip = @inet_ntop($value);
+                if ($ip && filter_var($ip, FILTER_VALIDATE_IP)) {
+                    return $ip;
+                }
+            }
+        }
+    }
+
+    // Textual IPv4/IPv6
+    if (is_string($value) && filter_var($value, FILTER_VALIDATE_IP)) {
+        return $value;
+    }
+
+    // Fallback: sanitized string
+    return is_string($value) ? sanitize_text_field($value) : '';
+}
+
+/**
+ * Ensure required PN tables exist (delta‑sicher). Runs on load; cheap no‑op if tables already exist.
+ */
+function pn_maybe_create_core_tables() {
+    global $wpdb;
+    if ( ! isset( $wpdb ) || ! $wpdb ) return;
+
+    // We use dbDelta via maybe_create_table helper
+    if ( ! function_exists( 'maybe_create_table' ) ) {
+        require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+    }
+
+    $charset_collate = $wpdb->get_charset_collate();
+
+    // post_notification_emails
+    $t_emails = $wpdb->prefix . 'post_notification_emails';
+    $sql_emails = "CREATE TABLE {$t_emails} (
+        id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+        email_addr varchar(255) NOT NULL,
+        gets_mail tinyint(1) NOT NULL DEFAULT 1,
+        last_modified datetime NOT NULL DEFAULT '0000-00-00 00:00:00',
+        date_subscribed datetime NOT NULL DEFAULT '0000-00-00 00:00:00',
+        act_code varchar(64) NOT NULL DEFAULT '',
+        subscribe_ip varchar(64) NOT NULL DEFAULT '',
+        PRIMARY KEY  (id),
+        UNIQUE KEY email_addr (email_addr)
+    ) {$charset_collate};";
+    maybe_create_table( $t_emails, $sql_emails );
+
+    // post_notification_lists (already used, ensure exists)
+    $t_lists = $wpdb->prefix . 'post_notification_lists';
+    $sql_lists = "CREATE TABLE {$t_lists} (
+        id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+        slug varchar(191) NOT NULL,
+        name varchar(255) NOT NULL,
+        created_at datetime NOT NULL DEFAULT '0000-00-00 00:00:00',
+        PRIMARY KEY  (id),
+        UNIQUE KEY slug (slug)
+    ) {$charset_collate};";
+    maybe_create_table( $t_lists, $sql_lists );
+
+    // post_notification_list_users (already used, ensure exists)
+    $t_rel = $wpdb->prefix . 'post_notification_list_users';
+    $sql_rel = "CREATE TABLE {$t_rel} (
+        list_id bigint(20) unsigned NOT NULL,
+        user_id bigint(20) unsigned NOT NULL,
+        added_at datetime NOT NULL DEFAULT '0000-00-00 00:00:00',
+        PRIMARY KEY  (list_id, user_id),
+        KEY user_id (user_id)
+    ) {$charset_collate};";
+    maybe_create_table( $t_rel, $sql_rel );
+}
+
+// Run once per load; cheap when tables exist
+add_action( 'plugins_loaded', 'pn_maybe_create_core_tables', 5 );
 
 /**
  * Get list ID by slug.

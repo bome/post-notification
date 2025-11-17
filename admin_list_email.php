@@ -222,7 +222,7 @@ function post_notification_admin_sub() {
             $datestr         = get_option( 'date_format' ) . ' ' . get_option( 'time_format' );
             $date_subscribed = post_notification_date_i18n_tz( $datestr, post_notification_mysql2gmdate( $search_email->date_subscribed ) );
             $id              = $search_email->id;
-            $ip              = long2ip( $search_email->subscribe_ip );
+            $ip              = pn_format_ip_for_display( $search_email->subscribe_ip );
 
             if ( $gets_mail === "1" ) {
                 $gets_mail = __( 'Yes', 'post_notification' );
@@ -267,7 +267,7 @@ function post_notification_admin_sub() {
                 echo "<td class=\"pn_subscribed_cats\">$catnames</td>";
                 echo "<td class=\"pn_accepted\">$gets_mail</td>";
                 echo "<td class=\"pn_date_accepted\">$date_subscribed</td>";
-                echo "<td class=\"pn_ip\">$ip</td>";
+                echo '<td class="pn_ip">' . esc_html( $ip ) . '</td>';
 
                 echo "</tr>";
             } else {
