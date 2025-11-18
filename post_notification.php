@@ -101,20 +101,27 @@ require_once( POST_NOTIFICATION_PATH . "functions.php" );
 // -----------------------------
 
 add_action( 'init', function () {
+    // Nur registrieren, wenn die Mailing-Funktion in den PN-Settings aktiviert ist
+    $enabled = get_option( 'post_notification_enable_mailing', 'no' );
+    if ( $enabled !== 'yes' ) {
+        return;
+    }
+
+    // Labels gemäß Wunsch: „PN-Posts“
     $labels = array(
-        'name'               => _x( 'Mailings', 'post type general name', 'post_notification' ),
-        'singular_name'      => _x( 'Mailing', 'post type singular name', 'post_notification' ),
-        'menu_name'          => _x( 'Mailings', 'admin menu', 'post_notification' ),
-        'name_admin_bar'     => _x( 'Mailing', 'add new on admin bar', 'post_notification' ),
-        'add_new'            => _x( 'Add New', 'mailing', 'post_notification' ),
-        'add_new_item'       => __( 'Add New Mailing', 'post_notification' ),
-        'new_item'           => __( 'New Mailing', 'post_notification' ),
-        'edit_item'          => __( 'Edit Mailing', 'post_notification' ),
-        'view_item'          => __( 'View Mailing', 'post_notification' ),
-        'all_items'          => __( 'All Mailings', 'post_notification' ),
-        'search_items'       => __( 'Search Mailings', 'post_notification' ),
-        'not_found'          => __( 'No mailings found.', 'post_notification' ),
-        'not_found_in_trash' => __( 'No mailings found in Trash.', 'post_notification' ),
+        'name'               => _x( 'PN-Posts', 'post type general name', 'post_notification' ),
+        'singular_name'      => _x( 'PN-Post', 'post type singular name', 'post_notification' ),
+        'menu_name'          => _x( 'PN-Posts', 'admin menu', 'post_notification' ),
+        'name_admin_bar'     => _x( 'PN-Post', 'add new on admin bar', 'post_notification' ),
+        'add_new'            => _x( 'Neu erstellen', 'pn_posts', 'post_notification' ),
+        'add_new_item'       => __( 'Neuen PN-Post erstellen', 'post_notification' ),
+        'new_item'           => __( 'Neuer PN-Post', 'post_notification' ),
+        'edit_item'          => __( 'PN-Post bearbeiten', 'post_notification' ),
+        'view_item'          => __( 'PN-Post ansehen', 'post_notification' ),
+        'all_items'          => __( 'Alle PN-Posts', 'post_notification' ),
+        'search_items'       => __( 'PN-Posts suchen', 'post_notification' ),
+        'not_found'          => __( 'Keine PN-Posts gefunden.', 'post_notification' ),
+        'not_found_in_trash' => __( 'Keine PN-Posts im Papierkorb.', 'post_notification' ),
     );
 
     register_post_type( 'pn_mailing', array(
@@ -123,12 +130,12 @@ add_action( 'init', function () {
         'exclude_from_search'=> true,
         'publicly_queryable' => false,
         'show_ui'            => true,
-        'show_in_menu'       => true,
+        // Unter den neuen Top-Level-Menüpunkt „Post Notification“ einsortieren (Slug identisch mit Settings-Seite)
+        'show_in_menu'       => 'post_notification/admin.php',
         'show_in_rest'       => false,
         'supports'           => array( 'title', 'editor' ),
         'capability_type'    => 'post',
         'map_meta_cap'       => true,
-        'menu_position'      => 26,
         'menu_icon'          => 'dashicons-email-alt',
     ) );
 } );
@@ -347,10 +354,26 @@ add_action( 'admin_enqueue_scripts', 'post_notification_admin_css' );
 
 /// Add the Admin panel
 function post_notification_admin_adder() {
-    $name = add_options_page( 'Post Notification', 'Post Notification', 'manage_options', 'post_notification/admin.php', 'post_notification_admin' );
+    // Top-Level-Menü "Post Notification" anlegen (Slug beibehalten, damit CPT darunter einsortiert werden kann)
+    add_menu_page(
+        'Post Notification',
+        'Post Notification',
+        'manage_options',
+        'post_notification/admin.php',
+        'post_notification_admin',
+        'dashicons-email-alt',
+        26
+    );
 
-    //This is for future use.
-    //add_action('load-' . $name, 'post_notification_admin_load');
+    // Zusätzlich die Einstellungen als Unterpunkt sicherstellen (optional, WP erzeugt sonst automatisch den Eintrag)
+    add_submenu_page(
+        'post_notification/admin.php',
+        __( 'Einstellungen', 'post_notification' ),
+        __( 'Einstellungen', 'post_notification' ),
+        'manage_options',
+        'post_notification/admin.php',
+        'post_notification_admin'
+    );
 }
 
 

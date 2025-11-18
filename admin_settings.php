@@ -107,6 +107,8 @@ function post_notification_admin_sub() {
 
         // Settings configuration with type, default value, and validation rules
         $settings_config = array(
+                // Feature-Schalter: Newsletter (pn_mailing) aktivieren
+                'enable_mailing'             => array( 'type' => 'text', 'default' => 'no', 'allowed_values' => array('yes','no') ),
                 'read_more'                  => array( 'type' => 'text', 'default' => '' ),
                 'show_content'               => array( 'type' => 'text', 'default' => 'no' ),
                 'send_default'               => array( 'type' => 'text', 'default' => 'no' ),
@@ -367,6 +369,19 @@ function post_notification_admin_sub() {
 
     <form id="update" method="post" action="admin.php?page=post_notification/admin.php&amp;action=settings">
         <?php wp_nonce_field( 'post_notification_update_settings', 'post_notification_nonce' ); ?>
+        <h4><?php _e( 'Newsletter / Mailings', 'post_notification' ); ?></h4>
+        <table class="post_notification_admin_table">
+            <tr class="pn_row">
+                <th class="pn_th_caption"><?php _e( 'Newsletter-Funktion aktivieren:', 'post_notification' ); ?></th>
+                <td class="pn_td">
+                    <select name="enable_mailing">
+                        <option value="no" <?php echo post_notification_get_selected( 'enable_mailing', 'no' ); ?>><?php _e( 'No', 'post_notification' ); ?></option>
+                        <option value="yes" <?php echo post_notification_get_selected( 'enable_mailing', 'yes' ); ?>><?php _e( 'Yes', 'post_notification' ); ?></option>
+                    </select>
+                </td>
+            </tr>
+        </table>
+
         <h4> <?php _e( 'When to send', 'post_notification' ); ?></h4>
         <table class="post_notification_admin_table">
 
