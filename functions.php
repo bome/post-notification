@@ -1272,3 +1272,139 @@ function pn_list_get_lists(): array {
     $rows = $wpdb->get_results( "SELECT id, slug, name FROM $t_lists ORDER BY name ASC", 'ARRAY_A' );
     return is_array( $rows ) ? $rows : array();
 }
+
+// ==============================================
+// Categories helpers (emails ↔ cats)
+// ==============================================
+
+/** Get email row ID by address (0 if missing). */
+function pn_email_get_id( string $email ): int {
+    global $wpdb;
+    $email = sanitize_email( $email );
+    if ( $email === '' ) return 0;
+    $t_emails = $wpdb->prefix . 'post_notification_emails';
+    $id = (int) $wpdb->get_var( $wpdb->prepare( "SELECT id FROM {$t_emails} WHERE email_addr=%s", $email ) );
+    return $id ?: 0;
+}
+
+/** Check if an email (by ID) has any category entries. */
+function pn_email_has_any_cat( int $email_id ): bool {
+    global $wpdb;
+    if ( $email_id <= 0 ) return false;
+    $t_cats = $wpdb->prefix . 'post_notification_cats';
+    $cnt = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$t_cats} WHERE id=%d", $email_id ) );
+    return $cnt > 0;
+}
+
+/** Subscribe an email (by ID) to a category (default 0 = All). */
+function pn_email_subscribe_cat( int $email_id, int $cat_id = 0 ): bool {
+    global $wpdb;
+    if ( $email_id <= 0 ) return false;
+    $t_cats = $wpdb->prefix . 'post_notification_cats';
+    // avoid duplicates
+    $exists = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$t_cats} WHERE id=%d AND cat_id=%d", $email_id, $cat_id ) );
+    if ( $exists ) return true;
+    $ok = $wpdb->insert( $t_cats, array( 'id' => $email_id, 'cat_id' => $cat_id ), array( '%d','%d' ) );
+    return (bool) $ok;
+}
+
+/** Batch ensure category assignment for a list of email addresses. Returns counters. */
+function pn_emails_ensure_cat( array $emails, int $cat_id = 0 ): array {
+    $result = [ 'added' => 0, 'skipped' => 0, 'errors' => 0 ];
+    foreach ( $emails as $email ) {
+        $email = is_string($email) ? trim( strtolower( $email ) ) : '';
+        if ( $email === '' || ! is_email( $email ) ) { $result['skipped']++; continue; }
+        try {
+            $eid = pn_email_get_id( $email );
+            if ( $eid <= 0 ) { $result['skipped']++; continue; }
+            if ( pn_email_has_any_cat( $eid ) ) { $result['skipped']++; continue; }
+            if ( pn_email_subscribe_cat( $eid, $cat_id ) ) { $result['added']++; }
+            else { $result['errors']++; }
+        } catch ( \Throwable $e ) {
+            if ( function_exists('error_log') ) { @error_log('[PostNotification] pn_emails_ensure_cat error: '.$e->getMessage()); }
+            $result['errors']++;
+        }
+    }
+    return $result;
+}
+
+/** Ensure a WordPress category exists by slug; create if missing. Returns term_id (0 on failure). */
+function pn_cat_get_or_create( string $slug, string $name, array $args = array() ): int {
+    $slug = sanitize_title( $slug );
+    $name = $name !== '' ? sanitize_text_field( $name ) : $slug;
+    if ( $slug === '' ) return 0;
+
+    $term = get_term_by( 'slug', $slug, 'category' );
+    if ( $term && ! is_wp_error( $term ) ) {
+        return (int) $term->term_id;
+    }
+    $insert = wp_insert_term( $name, 'category', array_merge( array( 'slug' => $slug ), $args ) );
+    if ( is_wp_error( $insert ) ) {
+        // If slug exists under a different name, try to fetch again to be safe
+        $term = get_term_by( 'slug', $slug, 'category' );
+        return ( $term && ! is_wp_error( $term ) ) ? (int) $term->term_id : 0;
+    }
+    return (int) ( $insert['term_id'] ?? 0 );
+}
+
+/** Remove a category assignment for an email_id. */
+function pn_email_unsubscribe_cat( int $email_id, int $cat_id ): bool {
+    global $wpdb;
+    if ( $email_id <= 0 || $cat_id <= 0 ) return false;
+    $t_cats = $wpdb->prefix . 'post_notification_cats';
+    $ok = $wpdb->delete( $t_cats, array( 'id' => $email_id, 'cat_id' => $cat_id ), array( '%d','%d' ) );
+    return (bool) $ok;
+}
+
+/**
+ * Sync a segment: ensure each email is in primary $cat_id and removed from all $peer_cat_ids.
+ * Returns counters: added, removed, skipped, errors.
+ */
+function pn_emails_sync_segment( array $emails, int $primary_cat_id, array $peer_cat_ids = array() ): array {
+    global $wpdb;
+    $res = [ 'added' => 0, 'removed' => 0, 'skipped' => 0, 'errors' => 0 ];
+    if ( $primary_cat_id <= 0 ) return $res;
+    $peer_cat_ids = array_values( array_unique( array_map( 'intval', (array) $peer_cat_ids ) ) );
+    $t_cats = $wpdb->prefix . 'post_notification_cats';
+
+    foreach ( $emails as $email ) {
+        $email = is_string( $email ) ? trim( strtolower( $email ) ) : '';
+        if ( $email === '' || ! is_email( $email ) ) { $res['skipped']++; continue; }
+        try {
+            $eid = pn_email_get_id( $email );
+            if ( $eid <= 0 ) { $res['skipped']++; continue; }
+            // Add to primary (idempotent)
+            if ( pn_email_subscribe_cat( $eid, $primary_cat_id ) ) { $res['added']++; }
+            // Remove from peer cats
+            foreach ( $peer_cat_ids as $pc ) {
+                if ( $pc > 0 ) {
+                    $ok = $wpdb->delete( $t_cats, array( 'id' => $eid, 'cat_id' => $pc ), array( '%d','%d' ) );
+                    if ( $ok ) { $res['removed'] += (int) $ok; }
+                }
+            }
+        } catch ( \Throwable $e ) {
+            if ( function_exists( 'error_log' ) ) { @error_log('[PostNotification] pn_emails_sync_segment error: '.$e->getMessage()); }
+            $res['errors']++;
+        }
+    }
+    return $res;
+}
+
+// WP-CLI: backfill categories for emails without any category
+if ( defined('WP_CLI') && WP_CLI ) {
+    \WP_CLI::add_command( 'pn cats backfill', function( $args, $assoc_args ) {
+        $cat = isset($assoc_args['cat']) ? intval($assoc_args['cat']) : 0;
+        global $wpdb;
+        $t_emails = $wpdb->prefix . 'post_notification_emails';
+        $t_cats   = $wpdb->prefix . 'post_notification_cats';
+        $ids = $wpdb->get_col( "SELECT e.id FROM {$t_emails} e LEFT JOIN {$t_cats} c ON c.id=e.id WHERE c.id IS NULL" );
+        $added=0;$errors=0;$skipped=0;
+        foreach ( (array)$ids as $eid ) {
+            $eid = (int)$eid;
+            if ( $eid <= 0 ) { $skipped++; continue; }
+            $ok = pn_email_subscribe_cat( $eid, $cat );
+            if ( $ok ) $added++; else $errors++;
+        }
+        \WP_CLI::success( sprintf('Backfill completed. Added=%d, errors=%d, skipped=%d', $added, $errors, $skipped) );
+    } );
+}

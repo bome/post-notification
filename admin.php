@@ -61,6 +61,9 @@ function post_notification_admin_page() {
                 <a href="admin.php?page=post_notification/admin.php&amp;action=list_email"><?php _e( 'List addresses', 'post_notification' ) ?></a>
             </li>
             <li>
+                <a href="admin.php?page=post_notification/admin.php&amp;action=lists"><?php _e( 'Distribution lists', 'post_notification' ) ?></a>
+            </li>
+            <li>
                 <a href="admin.php?page=post_notification/admin.php&amp;action=remove_email"><?php _e( 'Unsubscribe/Delete addresses', 'post_notification' ) ?></a>
             </li>
             <li>
@@ -109,8 +112,15 @@ function post_notification_admin_page() {
 	//             LIST OR REMOVE EMAIL ADDRESSES
 	//***************************************************//
     elseif ( $action === 'list_email' || $action === 'remove_email' ) {
-		require_once( POST_NOTIFICATION_PATH . 'admin_list_email.php' );
-	}
+        require_once( POST_NOTIFICATION_PATH . 'admin_list_email.php' );
+    }
+
+    //***************************************************//
+    //             PN Distribution Lists (new UI)
+    //***************************************************//
+    elseif ( $action === 'lists' ) {
+        require_once( POST_NOTIFICATION_PATH . 'admin_lists.php' );
+    }
 
 	//***************************************************//
 	//             EMAIL LIST SUBSCRIBERS
