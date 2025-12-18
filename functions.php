@@ -1,22 +1,343 @@
+<?php
+#------------------------------------------------------
+/*
+ INFO
+------------------------------------------------------
+ This is part of the Post Notification Plugin for
+ Wordpress. Please see the readme.txt for details.
+------------------------------------------------------
+
+*/
+// 2020 September: use shortcodes:
+add_shortcode( 'post_notification_header', 'post_notification_header_shortcode_function' );
+add_shortcode( 'post_notification_body', 'post_notification_body_shortcode_function' );
+
+function post_notification_header_shortcode_function() {
+	return "<h2>" . post_notification_feheader() . "</h2>\n";
+}
+
+function post_notification_body_shortcode_function() {
+	return post_notification_febody() . "\n";
+}
+
+function post_notification_get_profile_dir( $profile = '' ) {
+	if ( $profile == '' ) {
+		$profile = get_option( 'post_notification_profile' );
+	}
+
+	$dir = POST_NOTIFICATION_PATH . $profile;
+	if ( file_exists( $dir ) ) {
+		return $dir;
+	}
+
+	$dir = POST_NOTIFICATION_DATA . $profile;
+	if ( file_exists( $dir ) ) {
+		return $dir;
+	}
+
+	return false;
+}
+
+function post_notification_mysql2gmdate( $mysqlstring ) {
+	if ( empty( $mysqlstring ) ) {
+		return false;
+	}
+
+	return gmmktime(
+		(int) substr( $mysqlstring, 11, 2 ),
+		(int) substr( $mysqlstring, 14, 2 ),
+		(int) substr( $mysqlstring, 17, 2 ),
+		(int) substr( $mysqlstring, 5, 2 ),
+		(int) substr( $mysqlstring, 8, 2 ),
+		(int) substr( $mysqlstring, 0, 4 )
+	);
+}
+
+function post_notification_date2mysql( $unixtimestamp = 0 ) {
+	if ( empty( $unixtimestamp ) ) {
+		return gmdate( 'Y-m-d H:i:s' );
+	}
+
+	return gmdate( 'Y-m-d H:i:s', $unixtimestamp );
+}
+
+
+/**
+ * This function returns the SQL-statement to select all the posts which are to be sent.
+ *
+ * @paramfuture Also list posts published in the future
+ */
+function post_notification_sql_posts_to_send( $future = false ) {
+	global $wpdb;
+	if ( ! $future ) {
+		$add_where = "AND GREATEST(p.post_date_gmt, el.date_saved) < '" . post_notification_date2mysql( ( time() - get_option( 'post_notification_nervous' ) ) ) . "' ";
+	} else {
+		$add_where = '';
+	}
+	$t_posts = $wpdb->prefix . 'post_notification_posts';
+	if ( get_option( 'db_version' ) < 4772 ) {
+		return " FROM $wpdb->posts p, $t_posts el " .
+		       "WHERE( " .
+		       "el.notification_sent >= 0 AND " .
+		       "p.id = el.post_id AND " .
+		       "p.post_status IN('publish', 'static' , 'private') " .
+		       "$add_where)";
+	}
+
+	return " FROM $wpdb->posts p, $t_posts el " .
+	       "WHERE( " .
+	       "el.notification_sent >= 0 AND " .
+	       "p.id = el.post_id AND " .
+	       "p.post_status IN('publish', 'private', 'future') " .
+	       "$add_where)";
+}
+
+/// returns a link to the Post Notification Page.
+function post_notification_get_link() {
+	$page = get_option( 'post_notification_url' );
+	if ( is_numeric( $page ) ) {
+		return get_permalink( $page );
+	}
+
+	return $page;
+}
+
+
+///Load file from profile and do standard Replacement
+function post_notification_ldfile( $file ) {
+	$msg = file_get_contents( post_notification_get_profile_dir() . '/' . $file );
+
+	if ( function_exists( 'iconv' ) && function_exists( 'mb_detect_encoding' ) ) {
+		$temp = iconv(
+			mb_detect_encoding( $msg, "UTF-8, UTF-7, ISO-8859-1, ASCII, EUC-JP,SJIS, eucJP-win, SJIS-win, JIS, ISO-2022-JP" ),
+			get_option( 'blog_charset' ),
+			$msg
+		); //"auto" doesn't work on quite a few platforms so we have to list encodings.
+		if ( $temp != "" ) {
+			$msg = $temp;
+		}
+	}
+	$blogname = get_option( 'blogname' );
+	$msg      = str_replace( '@@blogname', $blogname, $msg );
+	$msg      = str_replace( '@@site', $blogname, $msg );
+
+	return $msg;
+}
+
+
+/// Encode umlauts for mail headers
+function post_notification_encode( $in_str, $charset ) {
+	//get line break
+	//See RFC 2047
+
+	if ( get_option( 'post_notification_hdr_nl' ) === 'rn' ) {
+		$hdr_nl = "\r\n";
+	} else {
+		$hdr_nl = "\n";
+	}
+
+
+	if ( ! function_exists( 'mb_detect_encoding' ) ) {
+		return $in_str;
+	} //Can't do anything without mb-functions.
+
+	$end       = '?=';
+	$start     = '=?' . $charset . '?B?';
+	$enc_len   = strlen( $start ) + 2; //2 = end
+	$lastbreak = 0;
+	$code      = '';
+	$out_str   = '';
+
+	for ( $i = 0, $iMax = strlen( $in_str ); $i < $iMax; $i ++ ) {
+		if ( function_exists( 'mb_check_encoding' ) ) {
+			$isascii = mb_check_encoding( $in_str[ $i ], 'ASCII' );
+		} else {
+			$isascii = ( mb_detect_encoding( $in_str[ $i ], 'UTF-8, ISO-8859-1, ASCII' ) === 'ASCII' );
+		}
+
+		//some adjustments
+		if ( $code !== '' ) {
+			if ( $in_str[ $i ] === ' ' || $in_str[ $i ] === "\t" ) {
+				$isascii = false;
+			}
+		}
+
+		//linebreaking
+		$this_line_len = strlen( $out_str ) + strlen( $code ) + $enc_len - $lastbreak; //$enc_len is needed in case a non-ascii is added
+		if ( $this_line_len > 65 && ( $in_str[ $i ] === ' ' || $in_str[ $i ] === "\t" ) ) {
+			if ( $code != '' ) { //Get rid of $code
+				$out_str .= $start . base64_encode( $code ) . $end;
+			}
+			//Linebrak and space -> rfc 822.
+			//In case we have $code this is no problem, as a new $code will start in the next line. -> Fail safe, little overhead
+			$out_str .= $hdr_nl . $in_str[ $i ];
+
+			$code      = '';
+			$lastbreak += $this_line_len;
+		}
+
+
+		if ( ! $isascii ) {
+			$code .= $in_str[ $i ];
+		} else {
+			if ( $code ) {
+				$out_str .= $start . base64_encode( $code ) . $end;
+				$code    = '';
+			}
+			$out_str .= $in_str[ $i ];
+		}
+	}
+	//We have some chars in the code-buffer we have to get rid of....
+	if ( $code ) {
+		$out_str .= $start . base64_encode( $code ) . $end;
+	}
+
+	return $out_str;
+}
+
+// Generate the Mail header
+// Ak: add unsubscribe options before sending (sendmail.php)
+function post_notification_header( $html = false ) {
+	$from_name = str_replace( '@@blogname', get_option( 'blogname' ), get_option( 'post_notification_from_name' ) );
+
+	$from_name = post_notification_encode( $from_name, get_option( 'blog_charset' ) );
+
+	$from_email = get_option( 'post_notification_from_email' );
+	if (empty($from_email)) {
+		//take the blog's admin email
+		$from_email = get_option( 'admin_email' );
+	}
+
+	$header = array();
+
+	//$header['MIME-Version'] = "MIME-Version: 1.0";
+	$header['From']        = "From: " . $from_name . " <" . $from_email . ">";
+	$header['Reply-To']    = "Reply-To: " . $from_email;
+	$header['Return-Path'] = "Return-Path: " . $from_email;
+
+	if ( $html ) {
+		$header['Content-type'] = "Content-type: text/html; charset=" . get_option( 'blog_charset' );
+	} else {
+		$header['Content-type'] = "Content-type: text/plain; charset=" . get_option( 'blog_charset' );
+	}
+
+ return $header;
+}
+
+/**
+ * Unified mail sending helper for Post Notification.
+ * Routes based on setting post_notification_mailer_method: 'wp', 'pn_smtp', 'wc'.
+ * Returns bool for success like wp_mail.
+ */
+function pn_send_mail( $to, $subject, $message, $headers = array(), $attachments = array() ) {
+	$method = get_option( 'post_notification_mailer_method', 'wp' );
+
+	// Normalize headers to array of Name: Value or key=>value
+	if ( is_string( $headers ) ) {
+		$headers = preg_split( "/\r?\n/", $headers );
+	}
+	$headers = is_array( $headers ) ? $headers : array();
+
+	// Helper to parse headers into assoc array
+	$assoc = array();
+	foreach ( $headers as $k => $v ) {
+		if ( is_string( $k ) ) {
+			$assoc[ $k ] = $v;
+		} elseif ( is_string( $v ) && strpos( $v, ':' ) !== false ) {
+			list( $name, $val ) = array( trim( substr( $v, 0, strpos( $v, ':' ) ) ), trim( substr( $v, strpos( $v, ':' ) + 1 ) ) );
+			$assoc[ $name ] = $val;
+		}
+	}
+
+ // WooCommerce mailer
+ if ( $method === 'wc' ) {
+     if ( ( function_exists( 'is_woocommerce_activated' ) && is_woocommerce_activated() ) || class_exists( 'WooCommerce' ) ) {
+         if ( function_exists( 'post_notification_WC_send_with_custom_from' ) ) {
+             return (bool) post_notification_WC_send_with_custom_from( $to, $subject, $message, $headers, (array) $attachments );
+         }
+     }
+     // Fallback to wp_mail if WC not available
+     $method = 'wp';
+ }
+
+	if ( $method === 'pn_smtp' ) {
+		// Use PHPMailer directly
+		if ( class_exists( '\\PHPMailer\\PHPMailer\\PHPMailer' ) ) {
+			$mail = new \PHPMailer\PHPMailer\PHPMailer( true );
+		} elseif ( class_exists( 'PHPMailer' ) ) {
+			$mail = new PHPMailer( true );
+		} else {
+			// As last resort, fall back to wp_mail
+			return (bool) wp_mail( $to, $subject, $message, $headers, $attachments );
+		}
+
+		try {
+			$mail->isSMTP();
+			$mail->Host = (string) get_option( 'post_notification_smtp_host', '' );
+			$mail->Port = (int) get_option( 'post_notification_smtp_port', 587 );
+			$secure = (string) get_option( 'post_notification_smtp_secure', 'tls' );
+			if ( $secure === 'none' ) {
+				$mail->SMTPSecure = '';
+			} else {
+				$mail->SMTPSecure = $secure; // 'ssl' or 'tls'
+			}
+			$mail->SMTPAuth = ( get_option( 'post_notification_smtp_auth', 'yes' ) === 'yes' );
+			$mail->Timeout = (int) get_option( 'post_notification_smtp_timeout', 30 );
+			$mail->CharSet = get_option( 'blog_charset', 'UTF-8' );
+
+			$user = (string) get_option( 'post_notification_smtp_user', '' );
+			$pass = (string) get_option( 'post_notification_smtp_pass', '' );
+			if ( $mail->SMTPAuth ) {
+				$mail->Username = $user;
+				$mail->Password = $pass;
+			}
+
+			// From and Reply-To from headers (built by post_notification_header())
+			$from_email = get_option( 'post_notification_from_email' );
+			if ( empty( $from_email ) ) { $from_email = get_option( 'admin_email' ); }
+			$from_name = str_replace( '@@blogname', get_option( 'blogname' ), get_option( 'post_notification_from_name' ) );
+
+			if ( isset( $assoc['From'] ) && preg_match( '/<([^>]+)>/', $assoc['From'], $m ) ) {
+				$from_email = trim( $m[1] );
+				$from_name = trim( preg_replace( '/\s*<[^>]+>.*/', '', $assoc['From'] ) );
+			}
+			$mail->setFrom( $from_email, $from_name );
+			if ( isset( $assoc['Reply-To'] ) && preg_match( '/<([^>]+)>/', $assoc['Reply-To'], $m2 ) ) {
+				$mail->addReplyTo( trim( $m2[1] ) );
+			}
+
+			// Content type
+			$is_html = false;
+			if ( isset( $assoc['Content-type'] ) && stripos( $assoc['Content-type'], 'text/html' ) !== false ) {
+				$is_html = true;
+			}
+			$mail->isHTML( $is_html );
+			$mail->Subject = $subject;
+			$mail->Body = $message;
+			if ( ! $is_html ) {
+				$mail->AltBody = $message;
+			}
+
+			// To may be array
+			$tos = is_array( $to ) ? $to : array( $to );
+			foreach ( $tos as $t ) {
+				if ( is_email( $t ) ) $mail->addAddress( $t );
+			}
+
+			// Custom headers (e.g., List-Unsubscribe)
+			foreach ( $assoc as $name => $val ) {
+				if ( in_array( strtolower( $name ), array( 'from', 'reply-to', 'content-type' ), true ) ) continue;
+				$mail->addCustomHeader( $name, $val );
+			}
 
 			// Attachments
 			foreach ( (array) $attachments as $att ) {
 				$mail->addAttachment( $att );
 			}
 
-			$sent = $mail->send();
-			if ( $logger ) {
-				$logger->info('pn_mail: route=pn_smtp done', [
-					'success'      => (bool) $sent,
-					'html'         => $is_html,
-					'headers_sent' => array_keys( $assoc ),
-					'attachments'  => is_array($attachments) ? count($attachments) : 0,
-				]);
-			}
-			return $sent;
+			return $mail->send();
 		} catch ( \Exception $e ) {
 			// Fallback
-			if ( $logger ) { $logger->info('pn_mail: route=pn_smtp exception, falling back to wp', ['error'=>$e->getMessage()]); }
 			return (bool) wp_mail( $to, $subject, $message, $headers, $attachments );
 		}
 	}
@@ -38,31 +359,20 @@
 
     $blog_charset = get_option( 'blog_charset', 'UTF-8' );
     // Temporary filters to force charset and content type just for this send
-    if ( $logger ) { $logger->info('pn_mail: route=wp start', ['to'=>$to, 'subject'=>$subject, 'is_html'=>$is_html, 'blog_charset'=>$blog_charset]); }
-    $f_ct = add_filter( 'wp_mail_content_type', function( $ct ) use ( $is_html, $logger ) {
-        $new = $is_html ? 'text/html' : 'text/plain';
-        if ( $logger ) { $logger->info('pn_mail: filter wp_mail_content_type', ['returned'=>$new]); }
-        return $new;
+    $f_ct = add_filter( 'wp_mail_content_type', function( $ct ) use ( $is_html ) {
+        return $is_html ? 'text/html' : 'text/plain';
     }, 100 );
-    $f_cs = add_filter( 'wp_mail_charset', function( $cs ) use ( $blog_charset, $logger ) {
-        $new = $blog_charset ?: 'UTF-8';
-        if ( $logger ) { $logger->info('pn_mail: filter wp_mail_charset', ['returned'=>$new]); }
-        return $new;
+    $f_cs = add_filter( 'wp_mail_charset', function( $cs ) use ( $blog_charset ) {
+        return $blog_charset ?: 'UTF-8';
     }, 100 );
-    $f_pi = add_action( 'phpmailer_init', function( $phpmailer ) use ( $blog_charset, $logger ) {
+    $f_pi = add_action( 'phpmailer_init', function( $phpmailer ) use ( $blog_charset ) {
         // Ensure PHPMailer uses UTF-8 and a safe transfer encoding
         $phpmailer->CharSet  = $blog_charset ?: 'UTF-8';
+        // Base64 works well for UTF-8 content in many clients
         $phpmailer->Encoding = 'base64';
-        if ( $logger ) {
-            $logger->info('pn_mail: action phpmailer_init', [
-                'CharSet'  => $phpmailer->CharSet,
-                'Encoding' => $phpmailer->Encoding,
-            ]);
-        }
     }, 100 );
 
     $result = (bool) wp_mail( $to, $subject, $message, $headers, $attachments );
-    if ( $logger ) { $logger->info('pn_mail: route=wp done', ['success'=>$result]); }
 
     // Cleanup so other mails aren’t affected
     remove_filter( 'wp_mail_content_type', $f_ct, 100 );
