@@ -23,8 +23,9 @@ function post_notification_arrayreplace( $input, $array ) {
  * - Sanitiert HTML für E-Mail und macht Links/Bilder absolut.
  * - Baut Betreff, Body, Header und Metadaten.
  *
- * @param int         $id        Post ID.
- * @param string      $template  Template-Dateiname (z. B. 'default.html'); leer = Option verwenden.
+ * @param int $id Post ID.
+ * @param string $template Template-Dateiname (z. B. 'default.html'); leer = Option verwenden.
+ *
  * @return array|false { 'id','subject','body','header','title' } oder false bei Fehler.
  */
 function post_notification_create_email( $id, $template = '' ) {
@@ -33,17 +34,17 @@ function post_notification_create_email( $id, $template = '' ) {
 		return false;
 	}
 
-	$blogname   = get_bloginfo( 'name' );
-	$post_url   = get_permalink( $post );
-	$post_title = wp_strip_all_tags( get_the_title( $post ) );
-	$author     = get_userdata( $post->post_author );
+	$blogname    = get_bloginfo( 'name' );
+	$post_url    = get_permalink( $post );
+	$post_title  = wp_strip_all_tags( get_the_title( $post ) );
+	$author      = get_userdata( $post->post_author );
 	$post_author = $author ? $author->display_name : '';
 
 	// Template & Mailtyp
 	if ( $template === '' ) {
 		$template = (string) get_option( 'post_notification_template' );
 	}
-	$html_email = ( substr( $template, -5 ) === '.html' );
+	$html_email = ( substr( $template, - 5 ) === '.html' );
 
 	// 1) Beitrag in „kuratiertem“ E-Mail-HTML rendern (inkl. Block-/Shortcode-Pipeline & Exclude-UI)
 	$content_html = pn_render_content_for_email( $id, 'exclude' );
@@ -55,17 +56,17 @@ function post_notification_create_email( $id, $template = '' ) {
 		$parts        = explode( '<!--more', $content_html, 2 );
 		$content_html = $parts[0];
 		if ( ! empty( $parts[1] ) ) {
-			$read_more = esc_html( (string) get_option( 'post_notification_read_more' ) );
+			$read_more    = esc_html( (string) get_option( 'post_notification_read_more' ) );
 			$content_html .= '<p><a href="@@permalink">' . $read_more . '</a></p>';
 		}
-	} elseif ( $show_mode === 'excerpt' ) {
+	} else if ( $show_mode === 'excerpt' ) {
 		// Wenn WP-Auszug existiert, den nehmen – sonst HTML-schonend kürzen
 		if ( ! empty( $post->post_excerpt ) ) {
 			$content_html = wpautop( wp_kses_post( $post->post_excerpt ) );
 		} else {
 			$content_html = pn_trim_html_words( $content_html, 55, '…' );
 		}
-		$read_more = esc_html( (string) get_option( 'post_notification_read_more' ) );
+		$read_more    = esc_html( (string) get_option( 'post_notification_read_more' ) );
 		$content_html .= '<p><a href="@@permalink">' . $read_more . '</a></p>';
 	}
 
@@ -77,18 +78,14 @@ function post_notification_create_email( $id, $template = '' ) {
 
 	// 5) Template laden & Variablen ersetzen
 	$body = (string) post_notification_ldfile( $template );
-	$body = str_replace(
-		['@@content','@@title','@@permalink','@@author','@@time','@@date'],
-		[
+	$body = str_replace( [ '@@content', '@@title', '@@permalink', '@@author', '@@time', '@@date' ], [
 			$content_for_body,
 			$post_title,
 			$post_url,
 			$post_author,
 			mysql2date( get_option( 'time_format' ), $post->post_date ),
 			mysql2date( get_option( 'date_format' ), $post->post_date ),
-		],
-		$body
-	);
+		], $body );
 
 	// 6) User-replacements (falls vorhanden)
 	if ( function_exists( 'post_notification_uf_perPost' ) ) {
@@ -100,11 +97,10 @@ function post_notification_create_email( $id, $template = '' ) {
 
 	// 8) Betreff bauen
 	$subject = (string) get_option( 'post_notification_subject' );
-	$subject = str_replace(
-		['@@blogname','@@title'],
-		[ $blogname, ( $post_title !== '' ? $post_title : __( 'New post', 'post_notification' ) ) ],
-		$subject
-	);
+	$subject = str_replace( [ '@@blogname', '@@title' ], [
+			$blogname,
+			( $post_title !== '' ? $post_title : __( 'New post', 'post_notification' ) ),
+		], $subject );
 	$subject = post_notification_encode( $subject, get_option( 'blog_charset' ) );
 
 	return [
@@ -120,11 +116,12 @@ function post_notification_create_email( $id, $template = '' ) {
  * Kürzt bereits gerendertes HTML auf N Wörter, balanciert Tags und erhält Basis-Markup.
  *
  * @param string $html
- * @param int    $words
+ * @param int $words
  * @param string $more
+ *
  * @return string
  */
-function pn_trim_html_words( string $html, int $words = 55, string $more = '…' ) : string {
+function pn_trim_html_words( string $html, int $words = 55, string $more = '…' ): string {
 	// Text extrahieren, Wortanzahl begrenzen
 	$text  = wp_strip_all_tags( $html );
 	$parts = preg_split( '/\s+/', trim( $text ) );
@@ -132,6 +129,7 @@ function pn_trim_html_words( string $html, int $words = 55, string $more = '…'
 		$parts = array_slice( $parts, 0, $words );
 		$text  = implode( ' ', $parts ) . $more;
 	}
+
 	// Minimal wieder mit <p> verpacken
 	return wpautop( wp_kses_post( $text ) );
 }
@@ -142,8 +140,9 @@ function pn_trim_html_words( string $html, int $words = 55, string $more = '…'
  * - Temporarily removes disallowed filters, runs the_content, then restores them
  * - Disables email-hostile filters by default (e.g., autoembed)
  *
- * @param int    $post_id
+ * @param int $post_id
  * @param string $mode 'include' or 'exclude' (how your settings are interpreted)
+ *
  * @return string Rendered HTML safe-ish for email
  */
 function pn_render_content_for_email( int $post_id, string $mode = 'exclude' ): string {
@@ -165,7 +164,7 @@ function pn_render_content_for_email( int $post_id, string $mode = 'exclude' ): 
 	// 3) Figure out which callbacks to detach.
 	//    - Pull user selection from your settings helper (array of callback IDs).
 	//    - Always force-remove a few email-hostile filters (iframes, heavy builders).
-	$user_list = pn_get_saved_the_content_excludes(); // or pn_get_includes() if you flipped semantics
+	$user_list       = pn_get_saved_the_content_excludes(); // or pn_get_includes() if you flipped semantics
 	$force_blocklist = array(
 		// Explicitly block WordPress oEmbed callbacks which can pull remote HTML/JS
 		'WP_Embed::autoembed',               // turns plain URLs into embeds (iframes)
@@ -180,8 +179,8 @@ function pn_render_content_for_email( int $post_id, string $mode = 'exclude' ): 
 	);
 
 	// Normalize to a set we can check quickly.
-	$user_set   = is_array( $user_list ) ? array_flip( $user_list ) : array();
-	$force_set  = array_flip( $force_blocklist );
+	$user_set  = is_array( $user_list ) ? array_flip( $user_list ) : array();
+	$force_set = array_flip( $force_blocklist );
 
 	// 4) Collect active the_content filters and decide which to remove.
 	$removed = array(); // keep what we remove so we can restore it later
@@ -199,9 +198,9 @@ function pn_render_content_for_email( int $post_id, string $mode = 'exclude' ): 
 
 				if ( isset( $force_set[ $callback_id ] ) ) {
 					$should_remove = true;
-				} elseif ( 'exclude' === $mode && isset( $user_set[ $callback_id ] ) ) {
+				} else if ( 'exclude' === $mode && isset( $user_set[ $callback_id ] ) ) {
 					$should_remove = true;
-				} elseif ( 'include' === $mode && ! isset( $user_set[ $callback_id ] ) ) {
+				} else if ( 'include' === $mode && ! isset( $user_set[ $callback_id ] ) ) {
 					$should_remove = true;
 				}
 
@@ -260,34 +259,44 @@ function pn_callback_to_id( $callback ): string {
 	if ( $callback instanceof Closure ) {
 		return 'closure';
 	}
+
 	return 'unknown';
 }
 
 
 function pn_email_sanitize_html( string $html, string $base = '' ): string {
-	$logger = function_exists('add_pn_logger') ? add_pn_logger('pn') : null;
+	$logger = function_exists( 'add_pn_logger' ) ? add_pn_logger( 'pn' ) : null;
 
 	// strip hard-disallowed containers early
 	$before = $html;
-	$html = preg_replace( '#<(script|style|iframe|object|embed|base|link)\b[^>]*>.*?</\1>#is', '', $html );
+	$html   = preg_replace( '#<(script|style|iframe|object|embed|base|link)\b[^>]*>.*?</\1>#is', '', $html );
 	// also remove stray self-closing base/link tags
 	$html = preg_replace( '#<\s*(base|link)\b[^>]*\/?>#is', '', $html );
 
 	if ( $logger && $before !== $html ) {
-		$logger->info('pn_email_sanitize_html: stripped disallowed tags from content');
+		$logger->info( 'pn_email_sanitize_html: stripped disallowed tags from content' );
 	}
 
 	// absolutize href/src on a and img only
-	$dom = new DOMDocument( '1.0', 'UTF-8' );
-	libxml_use_internal_errors( true );
-	$dom->loadHTML( '<div id="r">' . $html . '</div>', LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD );
+ $dom = new DOMDocument( '1.0', 'UTF-8' );
+ // libxml nimmt bei loadHTML ohne Encoding-Hinweis ISO-8859-1 an → führt zu Mojibake (â€™ etc.).
+ // Wir zwingen UTF-8-Parsing via XML-Deklaration und konvertieren Eingabezeichen in HTML-Entities.
+ libxml_use_internal_errors( true );
+ $wrapped = '<div id="r">' . $html . '</div>';
+ if ( function_exists( 'mb_convert_encoding' ) ) {
+     // Konvertiere UTF-8 Zeichen in HTML-Entities, damit DOMDocument sie sicher erhält.
+     $wrapped = mb_convert_encoding( $wrapped, 'HTML-ENTITIES', 'UTF-8' );
+ }
+ $dom->loadHTML( '<?xml encoding="UTF-8">' . $wrapped, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD );
 	$home = rtrim( $base ?: home_url( '/', 'https' ), '/' );
 
 	foreach ( [ 'a' => 'href', 'img' => 'src' ] as $tag => $attr ) {
 		$nodes = $dom->getElementsByTagName( $tag );
 		// NodeList is live; collect first
 		$els = [];
-		foreach ( $nodes as $n ) { $els[] = $n; }
+		foreach ( $nodes as $n ) {
+			$els[] = $n;
+		}
 		foreach ( $els as $el ) {
 			if ( ! $el->hasAttribute( $attr ) ) {
 				continue;
@@ -308,8 +317,12 @@ function pn_email_sanitize_html( string $html, string $base = '' ): string {
 			if ( ! preg_match( '#^[a-z][a-z0-9+\-.]*://#i', $u ) ) {
 				$rel = $u;
 				// normalize dot-segments when base is site root
-				while ( strpos( $rel, '../' ) === 0 ) { $rel = substr( $rel, 3 ); }
-				if ( strpos( $rel, './' ) === 0 ) { $rel = substr( $rel, 2 ); }
+				while ( strpos( $rel, '../' ) === 0 ) {
+					$rel = substr( $rel, 3 );
+				}
+				if ( strpos( $rel, './' ) === 0 ) {
+					$rel = substr( $rel, 2 );
+				}
 				$el->setAttribute( $attr, ( $rel[0] === '/' ? $home . $rel : $home . '/' . ltrim( $rel, '/' ) ) );
 			}
 		}
@@ -324,7 +337,7 @@ function pn_email_sanitize_html( string $html, string $base = '' ): string {
 	libxml_clear_errors();
 
 	// allow only email-friendly tags + a minimal style attr
-	$allowed = [
+	$allowed   = [
 		'a'      => [ 'href' => true, 'title' => true, 'target' => true, 'rel' => true, 'style' => true ],
 		'p'      => [ 'style' => true ],
 		'br'     => [],
@@ -365,7 +378,7 @@ function pn_email_sanitize_html( string $html, string $base = '' ): string {
 	$sanitized = wp_kses( $out, $allowed );
 
 	if ( $logger && $sanitized !== $out ) {
-		$logger->info('pn_email_sanitize_html: removed disallowed attributes/tags via wp_kses');
+		$logger->info( 'pn_email_sanitize_html: removed disallowed attributes/tags via wp_kses' );
 	}
 
 	// remove empty <p>
@@ -607,47 +620,118 @@ function post_notification_get_unsubscribeurl( $addr, $code ) {
 }
 
 function post_notification_WC_send_with_custom_from( string $to, string $subject, string $html, array $headers = [], array $attachments = [] ) {
+	$logger    = function_exists( 'add_pn_logger' ) ? add_pn_logger( 'pn' ) : null;
 	$from_addr = get_option( 'post_notification_from_email' );
-	if (empty($from_addr)) {
+	if ( empty( $from_addr ) ) {
 		//take the blog's admin email
 		$from_addr = get_option( 'admin_email' );
 	}
 	$from_name = get_option( 'post_notification_from_name' );
-	if ($from_name === '') {
-		$from_name = get_bloginfo('name');
-	} elseif (strpos($from_name, '@@blogname') !== false) {
-		$from_name = get_bloginfo('name');
+	if ( $from_name === '' ) {
+		$from_name = get_bloginfo( 'name' );
+	} else if ( strpos( $from_name, '@@blogname' ) !== false ) {
+		$from_name = get_bloginfo( 'name' );
 	}
 
 	// 1) Clean headers: remove any existing "From:" lines to avoid duplicates
-	$headers = array_values(array_filter(array_map('strval', $headers), function($h){
-		return stripos($h, 'from:') !== 0; // drop user-provided From
-	}));
+	$headers = array_values( array_filter( array_map( 'strval', $headers ), function ( $h ) {
+		return stripos( $h, 'from:' ) !== 0; // drop user-provided From
+	} ) );
 
+	if ( $logger ) {
+		$logger->info( 'pn_mail: route=wc start', [
+			'to'        => $to,
+			'subject'   => $subject,
+			'from_addr' => $from_addr,
+			'from_name' => $from_name,
+		] );
+	}
 	// 2) Set WC/WP From via filters (high priority to win over WC defaults)
-	$f1 = add_filter('woocommerce_email_from_address', function($addr) use ($from_addr){ return is_email($from_addr) ? $from_addr : $addr; }, 100);
-	$f2 = add_filter('woocommerce_email_from_name',    function($name) use ($from_name){ return $from_name ?: $name; }, 100);
-	$f3 = add_filter('wp_mail_from',                   function($addr) use ($from_addr){ return is_email($from_addr) ? $from_addr : $addr; }, 100);
-	$f4 = add_filter('wp_mail_from_name',              function($name) use ($from_name){ return $from_name ?: $name; }, 100);
+	$f1 = add_filter( 'woocommerce_email_from_address', function ( $addr ) use ( $from_addr, $logger ) {
+		$ret = is_email( $from_addr ) ? $from_addr : $addr;
+		if ( $logger ) {
+			$logger->info( 'pn_mail: filter woocommerce_email_from_address', [ 'returned' => $ret ] );
+		}
+
+		return $ret;
+	}, 100 );
+	$f2 = add_filter( 'woocommerce_email_from_name', function ( $name ) use ( $from_name, $logger ) {
+		$ret = $from_name ?: $name;
+		if ( $logger ) {
+			$logger->info( 'pn_mail: filter woocommerce_email_from_name', [ 'returned' => $ret ] );
+		}
+
+		return $ret;
+	}, 100 );
+	$f3 = add_filter( 'wp_mail_from', function ( $addr ) use ( $from_addr, $logger ) {
+		$ret = is_email( $from_addr ) ? $from_addr : $addr;
+		if ( $logger ) {
+			$logger->info( 'pn_mail: filter wp_mail_from', [ 'returned' => $ret ] );
+		}
+
+		return $ret;
+	}, 100 );
+	$f4 = add_filter( 'wp_mail_from_name', function ( $name ) use ( $from_name, $logger ) {
+		$ret = $from_name ?: $name;
+		if ( $logger ) {
+			$logger->info( 'pn_mail: filter wp_mail_from_name', [ 'returned' => $ret ] );
+		}
+
+		return $ret;
+	}, 100 );
 
 	// 3) Set envelope sender (= Return-Path) via phpmailer_init
-	$f5 = add_action('phpmailer_init', function( $phpmailer ) use ( $from_addr ) {
+	$f5 = add_action( 'phpmailer_init', function ( $phpmailer ) use ( $from_addr ) {
 		if ( is_email( $from_addr ) ) {
 			$phpmailer->Sender = $from_addr;   // controls Return-Path
 		}
-	}, 100);
+	}, 100 );
 
-	// 4) Send with WC mailer (wrap_message keeps the template)
+	// 4) Force HTML + UTF-8 for this send only
+	$blog_charset = get_option( 'blog_charset', 'UTF-8' );
+	$f_ct         = add_filter( 'wp_mail_content_type', function ( $ct ) use ( $logger ) {
+		if ( $logger ) {
+			$logger->info( 'pn_mail: filter wp_mail_content_type (wc)', [ 'returned' => 'text/html' ] );
+		}
+
+		return 'text/html';
+	}, 100 );
+	$f_cs         = add_filter( 'wp_mail_charset', function ( $cs ) use ( $blog_charset, $logger ) {
+		$ret = $blog_charset ?: 'UTF-8';
+		if ( $logger ) {
+			$logger->info( 'pn_mail: filter wp_mail_charset (wc)', [ 'returned' => $ret ] );
+		}
+
+		return $ret;
+	}, 100 );
+	$f_pi         = add_action( 'phpmailer_init', function ( $phpmailer ) use ( $blog_charset, $logger ) {
+		$phpmailer->CharSet  = $blog_charset ?: 'UTF-8';
+		$phpmailer->Encoding = 'base64';
+		if ( $logger ) {
+			$logger->info( 'pn_mail: action phpmailer_init (wc)', [
+				'CharSet'  => $phpmailer->CharSet,
+				'Encoding' => $phpmailer->Encoding,
+			] );
+		}
+	}, 100 );
+
+	// 5) Send with WC mailer (wrap_message keeps the template)
 	$mailer  = WC()->mailer();
 	$message = $mailer->wrap_message( $subject, $html );
 	$sent    = $mailer->send( $to, $subject, $message, $headers, $attachments );
+	if ( $logger ) {
+		$logger->info( 'pn_mail: route=wc done', [ 'success' => $sent ] );
+	}
 
-	// 5) Cleanup (important so other mails aren’t affected)
-	remove_filter('woocommerce_email_from_address', $f1, 100);
-	remove_filter('woocommerce_email_from_name',    $f2, 100);
-	remove_filter('wp_mail_from',                   $f3, 100);
-	remove_filter('wp_mail_from_name',              $f4, 100);
-	remove_action('phpmailer_init',                 $f5, 100);
+	// 6) Cleanup (important so other mails aren’t affected)
+	remove_filter( 'woocommerce_email_from_address', $f1, 100 );
+	remove_filter( 'woocommerce_email_from_name', $f2, 100 );
+	remove_filter( 'wp_mail_from', $f3, 100 );
+	remove_filter( 'wp_mail_from_name', $f4, 100 );
+	remove_action( 'phpmailer_init', $f5, 100 );
+	remove_filter( 'wp_mail_content_type', $f_ct, 100 );
+	remove_filter( 'wp_mail_charset', $f_cs, 100 );
+	remove_action( 'phpmailer_init', $f_pi, 100 );
 
 	return $sent;
 }

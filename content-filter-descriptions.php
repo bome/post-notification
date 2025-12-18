@@ -258,7 +258,7 @@ return [
 	],
 
 	'show_info' => [
-		'desc' => 'Debug/info output (theme-specific).',
+		'desc' => ' Debug/info output (theme-specific).',
 		'recommendation' => '❌ Skip – not relevant for mail.',
 	],
 
