@@ -280,16 +280,25 @@ function pn_email_sanitize_html( string $html, string $base = '' ): string {
 	}
 
 	// absolutize href/src on a and img only
- $dom = new DOMDocument( '1.0', 'UTF-8' );
- // libxml nimmt bei loadHTML ohne Encoding-Hinweis ISO-8859-1 an → führt zu Mojibake (â€™ etc.).
- // Wir zwingen UTF-8-Parsing via XML-Deklaration und konvertieren Eingabezeichen in HTML-Entities.
- libxml_use_internal_errors( true );
- $wrapped = '<div id="r">' . $html . '</div>';
- if ( function_exists( 'mb_convert_encoding' ) ) {
-     // Konvertiere UTF-8 Zeichen in HTML-Entities, damit DOMDocument sie sicher erhält.
-     $wrapped = mb_convert_encoding( $wrapped, 'HTML-ENTITIES', 'UTF-8' );
- }
- $dom->loadHTML( '<?xml encoding="UTF-8">' . $wrapped, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD );
+	$dom = new DOMDocument( '1.0', 'UTF-8' );
+	// libxml nimmt bei loadHTML ohne Encoding-Hinweis ISO-8859-1 an → führt zu Mojibake (â€™ etc.).
+	// Wir zwingen UTF-8-Parsing via XML-Deklaration und konvertieren Eingabezeichen in HTML-Entities.
+	libxml_use_internal_errors( true );
+	$wrapped = '<div id="sanitize_div">' . $html . '</div>';
+	
+	// Konvertiere UTF-8 Zeichen in HTML-Entities, damit DOMDocument sie sicher erhält.
+	// $$fb 2025-12-20: mb_convert_encoding is deprecated
+	//$wrapped = mb_convert_encoding( $wrapped, 'HTML-ENTITIES', 'UTF-8' );
+	// Convert all UTF-8 characters with 2-bytes or 4 bytes to HTML numeric character reference
+	$convmap = [
+    	0x80, 0x7FF, 0, 0x10FFFF,
+    	0x10000, 0x1FFFFF, 0, 0x10FFFF,
+	];
+	$wrapped = mb_encode_numericentity($wrapped, $convmap, "UTF-8");
+
+	//$logger && $logger->info( 'pn_email_sanitize_html:', [ 'htmlentities-len' => strlen($wrapped) ] );
+
+	$dom->loadHTML( '<?xml encoding="UTF-8">' . $wrapped, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD );
 	$home = rtrim( $base ?: home_url( '/', 'https' ), '/' );
 
 	foreach ( [ 'a' => 'href', 'img' => 'src' ] as $tag => $attr ) {
@@ -329,7 +338,8 @@ function pn_email_sanitize_html( string $html, string $base = '' ): string {
 			}
 		}
 	}
-	$root = $dom->getElementById( 'r' );
+
+	$root = $dom->getElementById( 'sanitize_div' );
 	$out  = '';
 	if ( $root ) {
 		foreach ( $root->childNodes as $c ) {
@@ -337,6 +347,8 @@ function pn_email_sanitize_html( string $html, string $base = '' ): string {
 		}
 	}
 	libxml_clear_errors();
+
+	//$logger && $logger->info( 'pn_email_sanitize_html:', [ 'saveHTML-len' => strlen($out) ] );
 
 	// allow only email-friendly tags + a minimal style attr
 	$allowed   = [
@@ -383,8 +395,12 @@ function pn_email_sanitize_html( string $html, string $base = '' ): string {
 		$logger->info( 'pn_email_sanitize_html: removed disallowed attributes/tags via wp_kses' );
 	}
 
+	//$logger && $logger->info( 'pn_email_sanitize_html:', [ 'wp_kses-len' => strlen($sanitized) ] );
+
 	// remove empty <p>
 	$sanitized = preg_replace( '#<p>\s*(?:&nbsp;|\xC2\xA0|\s)*</p>#i', '', $sanitized );
+
+	//$logger && $logger->info( 'pn_email_sanitize_html:', [ 'preg_replace-len' => strlen($sanitized) ] );
 
 	return trim( $sanitized );
 }
@@ -622,7 +638,9 @@ function post_notification_get_unsubscribeurl( $addr, $code ) {
 }
 
 function post_notification_WC_send_with_custom_from( string $to, string $subject, string $html, array $headers = [], array $attachments = [] ) {
-	$logger    = function_exists( 'add_pn_logger' ) ? add_pn_logger( 'pn' ) : null;
+	//$logger    = function_exists( 'add_pn_logger' ) ? add_pn_logger( 'pn' ) : null;
+	$logger = null;
+
 	$from_addr = get_option( 'post_notification_from_email' );
 	if ( empty( $from_addr ) ) {
 		//take the blog's admin email
@@ -636,13 +654,16 @@ function post_notification_WC_send_with_custom_from( string $to, string $subject
 	}
 	$from_name = post_notification_encode( $from_name );
 
+	// FIXME: we're using an own instance of PHPMailer in functions.php
+	//        -> could move all following filters to that class
+
 	// 1) Clean headers: remove any existing "From:" lines to avoid duplicates
 	$headers = array_values( array_filter( array_map( 'strval', $headers ), function ( $h ) {
 		return stripos( $h, 'from:' ) !== 0; // drop user-provided From
 	} ) );
 
 	if ( $logger ) {
-		$logger->info( 'pn_mail(wc): route=wc start', [
+		$logger->info( 'pn_mail(wc): start', [
 			'to'        => $to,
 			'subject'   => $subject,
 			'from_addr' => $from_addr,
@@ -706,7 +727,7 @@ function post_notification_WC_send_with_custom_from( string $to, string $subject
 	$f5 = add_action( 'phpmailer_init', function ( $phpmailer ) use ( $from_addr, $blog_charset, $headers, $logger ) {
 		if ( is_email( $from_addr ) ) {
 			$phpmailer->Sender = $from_addr;   // controls Return-Path
-			$logger->info( 'pn_mail(wc): action phpmailer_init (wc)', [
+			$logger && $logger->info( 'pn_mail(wc): action phpmailer_init (wc)', [
 				'Sender'  => $phpmailer->Sender,
 			] );
 		}
@@ -718,69 +739,6 @@ function post_notification_WC_send_with_custom_from( string $to, string $subject
 				'Encoding' => $phpmailer->Encoding,
 			] );
 		}
-
-		// note: PHPMailer will Q-encode the List-Unsubscribe headers no matter what.
-		// the following code removes and re-adds them as raw headers, but does not work, because PHPMailer Q-encodes after that.
-		/*
-		$RAW_HEADERS = [
-        	'List-Unsubscribe', 'List-Unsubscribe-Post', 'X-Unsubscribe', 'Precedence'
-    	];
-
-		// Get original headers from wp_mail
-		$customHeaders = $phpmailer->getCustomHeaders();
-
-		if ( !empty( $customHeaders ) ) {
-			foreach ( $customHeaders as $header ) {
-
-				// $header = [ name, value ]
-				if ( count( $header ) !== 2 ) {
-					continue;
-				}
-
-				[ $name, $value ] = $header;
-
-				if ( $logger ) {
-					$logger->info( 'pn_mail(wc): found custom header', [ $name => $value ] );
-				}
-
-				if ( ! in_array( $name, $RAW_HEADERS, true ) ) {
-					continue;
-				}
-
-				// find the header in our previously passed $headers to wp_mail
-				$found = false;
-				foreach ( $headers as $h ) {
-					$h_parts = explode( ':', $h, 2 );
-					if ( count( $h_parts ) !== 2 ) {
-						continue;
-					}
-					$h_name  = trim( $h_parts[0] );
-					$h_value = trim( $h_parts[1] );
-					if ( strcasecmp( $h_name, $name ) === 0 ) {
-						$value = $h_value;
-						$found = true;
-						break;
-					}
-				}
-				if ( ! $found ) {
-					continue;
-				}
-
-				if (strcasecmp($value, $h_value) === 0) {
-					continue;
-				}
-
-				// Remove the possibly encoded version
-				$phpmailer->removeCustomHeader( $name );
-
-				// Re-add as raw header
-				$phpmailer->addCustomHeader( $name, $h_value );
-				if ( $logger ) {
-					$logger->info( 'pn_mail(wc): replace header', [ $name => $h_value ] );
-				}
-			}
-		}
-		*/
 
 	}, 100 );
 

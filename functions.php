@@ -131,21 +131,14 @@ function post_notification_encode( $in_str, $charset = null) {
 	if ( empty($charset) ) {
 		$charset = get_option( 'blog_charset' );
 	}
-	$out_str = $in_str;
 
-	if ( function_exists( 'mb_convert_encoding' ) ) {
-		$out_str = mb_convert_encoding( $out_str, $charset, "HTML-ENTITIES" );
-	} else {
-		// html_entity_decode does not convert unicode entities like &#8217; to UTF-8 chars (which is E2 80 99 in UTF-8)
-		$opts = ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML5;
-		$out_str = html_entity_decode( $out_str, $opts, $charset );
-	}
-
-	$logger = function_exists( 'pn_get_logger' ) ? pn_get_logger() : null;
-	$logger && $logger->info( 'Encoded string', array( 'input' => $in_str, 'output' => $out_str, 'charset' => $charset ) );
-
-	return $out_str;
+	// html_entity_decode also decodes unicode entities like &#8217; to UTF-8 chars (which is E2 80 99 in UTF-8)
+	// note: cannot use
+	//     mb_convert_encoding( $out_str, $charset, "HTML-ENTITIES" )
+	// here, because it also double-encodes UTF-8 chars
+	return html_entity_decode( $in_str, ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML5, $charset );
 }
+
 
 /// Encode umlauts for mail headers
 // $$fb : this is not necessary, is handled in wp_mail already
@@ -249,12 +242,81 @@ function post_notification_header( $html = false ) {
  	return $header;
 }
 
+//
+// Overload WP_PHPMailer to avoid Q-encoding of certain headers
+//
+
+if ( ! class_exists( 'WP_PHPMailer' ) ) {
+	require_once ABSPATH . WPINC . '/PHPMailer/PHPMailer.php';
+	require_once ABSPATH . WPINC . '/class-wp-phpmailer.php';
+}
+
+// extend WP_PHPMailer so that some unsubscribe headers are not Q-encoded
+// Wordpress uses the global variable $phpmailer of class WP_PHPMailer
+// see https://developer.wordpress.org/reference/classes/wp_phpmailer/
+// see https://github.com/PHPMailer/PHPMailer/blob/master/src/PHPMailer.php#L3657
+class PN_PHPMailer extends WP_PHPMailer {
+
+	public function __construct( $exceptions = false ) {
+		parent::__construct( $exceptions );
+	}
+
+	// overwrite createHeader()
+	public function createHeader() {
+		$raw_headers = array( 'List-Unsubscribe', 'List-Unsubscribe-Post', 'X-Unsubscribe', 'X-Unsubscribe-Post', 'List-Help', 'List-Subscribe', 'List-Post', 'List-Owner', 'List-Archive' );
+		// cache the custom headers
+		$cachedHeaders = [];
+		foreach ( $this->CustomHeader as $header ) {
+			// only cache raw headers
+			if ( in_array( $header[0], $raw_headers, true ) ) {
+				$cachedHeaders[ $header[0] ] = $header[1];
+			}
+		}
+		// remove raw headers from CustomHeader so parent::createHeader() won't process them
+		foreach ( $cachedHeaders as $name => $value ) {
+			$this->clearCustomHeader( $name );
+		}
+
+		// call parent to create standard headers
+		$result = parent::createHeader( $name, $value );
+		
+		// manually add the raw headers to the result
+		foreach ( $cachedHeaders as $name => $value ) {
+			$result .= $this->headerLine( trim( $name ), trim($value) );
+		}
+
+		// re-add raw headers without encoding
+		foreach ( $cachedHeaders as $name => $value ) {
+			$this->addCustomHeader( $name, $value );
+		}
+
+		return $result;
+	}
+}
+
+
 /**
  * Unified mail sending helper for Post Notification.
  * Routes based on setting post_notification_mailer_method: 'wp', 'pn_smtp', 'wc'.
  * Returns bool for success like wp_mail.
  */
 function pn_send_mail( $to, $subject, $message, $headers = array(), $attachments = array() ) {
+	//$logger = function_exists( 'add_pn_logger' ) ? add_pn_logger( 'pn' ) : null;
+	$logger = null;
+
+	// see https://developer.wordpress.org/reference/functions/wp_mail/
+	global $phpmailer;
+	if ( ! ( $phpmailer instanceof PN_PHPMailer ) ) {
+		$logger && $logger->info( 'pn_send_mail: initializing PN_PHPMailer' );
+
+		$phpmailer = new PN_PHPMailer( true );
+
+		// code from Wordpress
+		$phpmailer::$validator = static function ( $email ) {
+			return (bool) is_email( $email );
+		};
+	}
+
 	$method = get_option( 'post_notification_mailer_method', 'wp' );
 
 	// Normalize headers to array of Name: Value or key=>value
@@ -274,16 +336,18 @@ function pn_send_mail( $to, $subject, $message, $headers = array(), $attachments
 		}
 	}
 
- // WooCommerce mailer
- if ( $method === 'wc' ) {
-     if ( ( function_exists( 'is_woocommerce_activated' ) && is_woocommerce_activated() ) || class_exists( 'WooCommerce' ) ) {
-         if ( function_exists( 'post_notification_WC_send_with_custom_from' ) ) {
-             return (bool) post_notification_WC_send_with_custom_from( $to, $subject, $message, $headers, (array) $attachments );
-         }
-     }
-     // Fallback to wp_mail if WC not available
-     $method = 'wp';
- }
+	// WooCommerce mailer
+	if ( $method === 'wc' ) {
+		// alternatively, could use 
+		// WC_Emails::wrap_email() and then use wp_mail() or PHPMailer directly
+		if ( ( function_exists( 'is_woocommerce_activated' ) && is_woocommerce_activated() ) || class_exists( 'WooCommerce' ) ) {
+			if ( function_exists( 'post_notification_WC_send_with_custom_from' ) ) {
+				return (bool) post_notification_WC_send_with_custom_from( $to, $subject, $message, $headers, (array) $attachments );
+			}
+		}
+		// Fallback to wp_mail if WC not available
+		$method = 'wp';
+	}
 
 	if ( $method === 'pn_smtp' ) {
 		// Use PHPMailer directly
@@ -466,7 +530,7 @@ function post_notification_get_mailurl( $addr, $code = '' ) {
 	} else {
 		$confurl .= '?';
 	}
-	$confurl .= "code=" . $code . "&addr=" . urlencode( $addr ) . "&";
+	$confurl .= "code=" . $code . "&addr=" . urlencode( $addr );
 
 	return $confurl;
 }
