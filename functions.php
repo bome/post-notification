@@ -117,19 +117,45 @@ function post_notification_ldfile( $file ) {
 			$msg = $temp;
 		}
 	}
-	$blogname = get_option( 'blogname' );
+	$blogname = get_bloginfo( 'name' );
 	$msg      = str_replace( '@@blogname', $blogname, $msg );
 	$msg      = str_replace( '@@site', $blogname, $msg );
 
 	return $msg;
 }
 
+// WP stores everything in HTML, so we need to convert HTML entities to the blog charset
+// Encode $in_str for mail headers with the given charset
+// HTML entities are converted to the given charset
+function post_notification_encode( $in_str, $charset = null) {
+	if ( empty($charset) ) {
+		$charset = get_option( 'blog_charset' );
+	}
+	$out_str = $in_str;
+
+	if ( function_exists( 'mb_convert_encoding' ) ) {
+		$out_str = mb_convert_encoding( $out_str, $charset, "HTML-ENTITIES" );
+	} else {
+		// html_entity_decode does not convert unicode entities like &#8217; to UTF-8 chars (which is E2 80 99 in UTF-8)
+		$opts = ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML5;
+		$out_str = html_entity_decode( $out_str, $opts, $charset );
+	}
+
+	$logger = function_exists( 'pn_get_logger' ) ? pn_get_logger() : null;
+	$logger && $logger->info( 'Encoded string', array( 'input' => $in_str, 'output' => $out_str, 'charset' => $charset ) );
+
+	return $out_str;
+}
 
 /// Encode umlauts for mail headers
-function post_notification_encode( $in_str, $charset ) {
+// $$fb : this is not necessary, is handled in wp_mail already
+function post_notification_encode_old( $in_str, $charset = null) {
+	if ( empty($charset) ) {
+		$charset = get_option( 'blog_charset' );
+	}
+
 	//get line break
 	//See RFC 2047
-
 	if ( get_option( 'post_notification_hdr_nl' ) === 'rn' ) {
 		$hdr_nl = "\r\n";
 	} else {
@@ -199,8 +225,7 @@ function post_notification_encode( $in_str, $charset ) {
 // Ak: add unsubscribe options before sending (sendmail.php)
 function post_notification_header( $html = false ) {
 	$from_name = str_replace( '@@blogname', get_option( 'blogname' ), get_option( 'post_notification_from_name' ) );
-
-	$from_name = post_notification_encode( $from_name, get_option( 'blog_charset' ) );
+	$from_name = post_notification_encode( $from_name );
 
 	$from_email = get_option( 'post_notification_from_email' );
 	if (empty($from_email)) {
@@ -221,7 +246,7 @@ function post_notification_header( $html = false ) {
 		$header['Content-type'] = "Content-type: text/plain; charset=" . get_option( 'blog_charset' );
 	}
 
- return $header;
+ 	return $header;
 }
 
 /**
@@ -301,6 +326,7 @@ function pn_send_mail( $to, $subject, $message, $headers = array(), $attachments
 				$from_email = trim( $m[1] );
 				$from_name = trim( preg_replace( '/\s*<[^>]+>.*/', '', $assoc['From'] ) );
 			}
+			$from_name = post_notification_encode( $from_name );
 			$mail->setFrom( $from_email, $from_name );
 			if ( isset( $assoc['Reply-To'] ) && preg_match( '/<([^>]+)>/', $assoc['Reply-To'], $m2 ) ) {
 				$mail->addReplyTo( trim( $m2[1] ) );

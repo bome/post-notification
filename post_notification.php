@@ -274,12 +274,11 @@ function pn_send_mailing( int $post_id ): void {
     require_once POST_NOTIFICATION_PATH . 'sendmail.php';
     $base_html = pn_render_content_for_email( $post_id, 'exclude' );
 
+    $blogname = post_notification_encode( get_bloginfo( 'name' ) );
+    $title = post_notification_encode( wp_strip_all_tags( get_the_title( $post_id ) ) );
+
     $subject = (string) get_option( 'post_notification_subject', '@@blogname: @@title' );
-    $subject = str_replace(
-        array( '@@blogname', '@@title' ),
-        array( get_bloginfo( 'name' ), wp_strip_all_tags( get_the_title( $post_id ) ) ),
-        $subject
-    );
+    $subject = str_replace(array( '@@blogname', '@@title' ), array( $blogname, $title ), $subject);
 
     $header = post_notification_header( true ); // send HTML by default for mailings
 
@@ -695,6 +694,7 @@ function post_notification_widget_registrieren() {
 }
 
 add_action( 'plugins_loaded', 'post_notification_widget_registrieren' );
+
 
 // Load textdomain ONCE (outside the form function)
 add_action( 'plugins_loaded', function () {

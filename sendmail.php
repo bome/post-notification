@@ -101,7 +101,9 @@ function post_notification_create_email( $id, $template = '' ) {
 			$blogname,
 			( $post_title !== '' ? $post_title : __( 'New post', 'post_notification' ) ),
 		], $subject );
-	$subject = post_notification_encode( $subject, get_option( 'blog_charset' ) );
+
+	// decode to UTF-8
+	$subject = post_notification_encode( $subject );
 
 	return [
 		'id'      => $id,
@@ -632,6 +634,7 @@ function post_notification_WC_send_with_custom_from( string $to, string $subject
 	} else if ( strpos( $from_name, '@@blogname' ) !== false ) {
 		$from_name = get_bloginfo( 'name' );
 	}
+	$from_name = post_notification_encode( $from_name );
 
 	// 1) Clean headers: remove any existing "From:" lines to avoid duplicates
 	$headers = array_values( array_filter( array_map( 'strval', $headers ), function ( $h ) {
@@ -639,7 +642,7 @@ function post_notification_WC_send_with_custom_from( string $to, string $subject
 	} ) );
 
 	if ( $logger ) {
-		$logger->info( 'pn_mail: route=wc start', [
+		$logger->info( 'pn_mail(wc): route=wc start', [
 			'to'        => $to,
 			'subject'   => $subject,
 			'from_addr' => $from_addr,
@@ -650,7 +653,7 @@ function post_notification_WC_send_with_custom_from( string $to, string $subject
 	$f1 = add_filter( 'woocommerce_email_from_address', function ( $addr ) use ( $from_addr, $logger ) {
 		$ret = is_email( $from_addr ) ? $from_addr : $addr;
 		if ( $logger ) {
-			$logger->info( 'pn_mail: filter woocommerce_email_from_address', [ 'returned' => $ret ] );
+			$logger->info( 'pn_mail(wc): filter woocommerce_email_from_address', [ 'returned' => $ret ] );
 		}
 
 		return $ret;
@@ -658,7 +661,7 @@ function post_notification_WC_send_with_custom_from( string $to, string $subject
 	$f2 = add_filter( 'woocommerce_email_from_name', function ( $name ) use ( $from_name, $logger ) {
 		$ret = $from_name ?: $name;
 		if ( $logger ) {
-			$logger->info( 'pn_mail: filter woocommerce_email_from_name', [ 'returned' => $ret ] );
+			$logger->info( 'pn_mail(wc): filter woocommerce_email_from_name', [ 'returned' => $ret ] );
 		}
 
 		return $ret;
@@ -666,7 +669,7 @@ function post_notification_WC_send_with_custom_from( string $to, string $subject
 	$f3 = add_filter( 'wp_mail_from', function ( $addr ) use ( $from_addr, $logger ) {
 		$ret = is_email( $from_addr ) ? $from_addr : $addr;
 		if ( $logger ) {
-			$logger->info( 'pn_mail: filter wp_mail_from', [ 'returned' => $ret ] );
+			$logger->info( 'pn_mail(wc): filter wp_mail_from', [ 'returned' => $ret ] );
 		}
 
 		return $ret;
@@ -674,24 +677,17 @@ function post_notification_WC_send_with_custom_from( string $to, string $subject
 	$f4 = add_filter( 'wp_mail_from_name', function ( $name ) use ( $from_name, $logger ) {
 		$ret = $from_name ?: $name;
 		if ( $logger ) {
-			$logger->info( 'pn_mail: filter wp_mail_from_name', [ 'returned' => $ret ] );
+			$logger->info( 'pn_mail(wc): filter wp_mail_from_name', [ 'returned' => $ret ] );
 		}
 
 		return $ret;
 	}, 100 );
 
-	// 3) Set envelope sender (= Return-Path) via phpmailer_init
-	$f5 = add_action( 'phpmailer_init', function ( $phpmailer ) use ( $from_addr ) {
-		if ( is_email( $from_addr ) ) {
-			$phpmailer->Sender = $from_addr;   // controls Return-Path
-		}
-	}, 100 );
-
-	// 4) Force HTML + UTF-8 for this send only
+	// 3) Force HTML + UTF-8 for this send only
 	$blog_charset = get_option( 'blog_charset', 'UTF-8' );
 	$f_ct         = add_filter( 'wp_mail_content_type', function ( $ct ) use ( $logger ) {
 		if ( $logger ) {
-			$logger->info( 'pn_mail: filter wp_mail_content_type (wc)', [ 'returned' => 'text/html' ] );
+			$logger->info( 'pn_mail(wc): filter wp_mail_content_type (wc)', [ 'returned' => 'text/html' ] );
 		}
 
 		return 'text/html';
@@ -699,20 +695,93 @@ function post_notification_WC_send_with_custom_from( string $to, string $subject
 	$f_cs         = add_filter( 'wp_mail_charset', function ( $cs ) use ( $blog_charset, $logger ) {
 		$ret = $blog_charset ?: 'UTF-8';
 		if ( $logger ) {
-			$logger->info( 'pn_mail: filter wp_mail_charset (wc)', [ 'returned' => $ret ] );
+			$logger->info( 'pn_mail(wc): filter wp_mail_charset (wc)', [ 'returned' => $ret ] );
 		}
 
 		return $ret;
 	}, 100 );
-	$f_pi         = add_action( 'phpmailer_init', function ( $phpmailer ) use ( $blog_charset, $logger ) {
+
+	// 4) Set envelope sender (= Return-Path)
+	//    and remove encoding of list headers via phpmailer_init
+	$f5 = add_action( 'phpmailer_init', function ( $phpmailer ) use ( $from_addr, $blog_charset, $headers, $logger ) {
+		if ( is_email( $from_addr ) ) {
+			$phpmailer->Sender = $from_addr;   // controls Return-Path
+			$logger->info( 'pn_mail(wc): action phpmailer_init (wc)', [
+				'Sender'  => $phpmailer->Sender,
+			] );
+		}
 		$phpmailer->CharSet  = $blog_charset ?: 'UTF-8';
-		$phpmailer->Encoding = 'base64';
+		//$phpmailer->Encoding = 'base64';
 		if ( $logger ) {
-			$logger->info( 'pn_mail: action phpmailer_init (wc)', [
+			$logger->info( 'pn_mail(wc): action phpmailer_init (wc)', [
 				'CharSet'  => $phpmailer->CharSet,
 				'Encoding' => $phpmailer->Encoding,
 			] );
 		}
+
+		// note: PHPMailer will Q-encode the List-Unsubscribe headers no matter what.
+		// the following code removes and re-adds them as raw headers, but does not work, because PHPMailer Q-encodes after that.
+		/*
+		$RAW_HEADERS = [
+        	'List-Unsubscribe', 'List-Unsubscribe-Post', 'X-Unsubscribe', 'Precedence'
+    	];
+
+		// Get original headers from wp_mail
+		$customHeaders = $phpmailer->getCustomHeaders();
+
+		if ( !empty( $customHeaders ) ) {
+			foreach ( $customHeaders as $header ) {
+
+				// $header = [ name, value ]
+				if ( count( $header ) !== 2 ) {
+					continue;
+				}
+
+				[ $name, $value ] = $header;
+
+				if ( $logger ) {
+					$logger->info( 'pn_mail(wc): found custom header', [ $name => $value ] );
+				}
+
+				if ( ! in_array( $name, $RAW_HEADERS, true ) ) {
+					continue;
+				}
+
+				// find the header in our previously passed $headers to wp_mail
+				$found = false;
+				foreach ( $headers as $h ) {
+					$h_parts = explode( ':', $h, 2 );
+					if ( count( $h_parts ) !== 2 ) {
+						continue;
+					}
+					$h_name  = trim( $h_parts[0] );
+					$h_value = trim( $h_parts[1] );
+					if ( strcasecmp( $h_name, $name ) === 0 ) {
+						$value = $h_value;
+						$found = true;
+						break;
+					}
+				}
+				if ( ! $found ) {
+					continue;
+				}
+
+				if (strcasecmp($value, $h_value) === 0) {
+					continue;
+				}
+
+				// Remove the possibly encoded version
+				$phpmailer->removeCustomHeader( $name );
+
+				// Re-add as raw header
+				$phpmailer->addCustomHeader( $name, $h_value );
+				if ( $logger ) {
+					$logger->info( 'pn_mail(wc): replace header', [ $name => $h_value ] );
+				}
+			}
+		}
+		*/
+
 	}, 100 );
 
 	// 5) Send with WC mailer (wrap_message keeps the template)
@@ -720,7 +789,7 @@ function post_notification_WC_send_with_custom_from( string $to, string $subject
 	$message = $mailer->wrap_message( $subject, $html );
 	$sent    = $mailer->send( $to, $subject, $message, $headers, $attachments );
 	if ( $logger ) {
-		$logger->info( 'pn_mail: route=wc done', [ 'success' => $sent ] );
+		$logger->info( 'pn_mail(wc): route=wc done', [ 'success' => $sent ] );
 	}
 
 	// 6) Cleanup (important so other mails aren’t affected)
@@ -731,7 +800,6 @@ function post_notification_WC_send_with_custom_from( string $to, string $subject
 	remove_action( 'phpmailer_init', $f5, 100 );
 	remove_filter( 'wp_mail_content_type', $f_ct, 100 );
 	remove_filter( 'wp_mail_charset', $f_cs, 100 );
-	remove_action( 'phpmailer_init', $f_pi, 100 );
 
 	return $sent;
 }
