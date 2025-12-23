@@ -424,7 +424,7 @@ function post_notification_check_captcha() {
 	}
 
 	require_once( POST_NOTIFICATION_PATH . 'class.captcha.php' );
-	$my_captcha = new captcha( $captchacode, POST_NOTIFICATION_PATH . '_temp' );
+	$my_captcha = new captcha( $captchacode, POST_NOTIFICATION_TEMP_PATH );
 
 	return $my_captcha->verify( $captcha );
 }
@@ -498,11 +498,11 @@ function post_notification_add_captcha( $html ) {
 
 	require_once( POST_NOTIFICATION_PATH . 'class.captcha.php' );
 	$captcha_code = md5( wp_rand( 0, 40000 ) );
-	$my_captcha = new captcha( $captcha_code, POST_NOTIFICATION_PATH . '_temp' );
+	$my_captcha = new captcha( $captcha_code, POST_NOTIFICATION_TEMP_PATH );
 	$captcha_hash = $my_captcha->get_pic( $captcha_length );
 
 	if ( $captcha_hash ) {
-		$captchaimg = POST_NOTIFICATION_PATH_URL . '_temp/cap_' . $captcha_hash . '.jpg';
+		$captchaimg = POST_NOTIFICATION_TEMP_PATH_URL . '/cap_' . $captcha_hash . '.jpg';
 		$html = str_replace( '@@captchaimg', esc_url( $captchaimg ), $html );
 		$html = str_replace( '@@captchacode', esc_attr( $captcha_code ), $html );
 	}

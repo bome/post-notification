@@ -12,6 +12,9 @@
 	2007-07-07 Added file_exists check.
 */
 
+require_once plugin_dir_path( __FILE__ ) . 'add_logger.php';
+
+
 class captcha {
 	public $session_key = null;
 	public $temp_dir = null;
@@ -47,6 +50,8 @@ class captcha {
      * @return string|false Hash of captcha or false on failure
      */
     public function get_pic( $num_chars = 8 ) {
+	$logger = add_pn_logger();
+
         // Define characters for captcha - exclude similar looking characters
         // Removed: 0 (zero), O (letter o), I (letter i), 1 (one), l (lowercase L)
         // to improve readability and reduce user frustration
@@ -71,11 +76,15 @@ class captcha {
         $captcha_hash = md5( strtolower( $captcha_str ) );
         $image_path = $this->temp_dir . '/cap_' . $captcha_hash . '.jpg';
 
+	//$logger && $logger->info( 'class.captcha::get_pic: generate image', ['file' => $image_path] );
+
         if ( $this->_generate_image( $image_path, $captcha_str ) ) {
             $hash_file = $this->temp_dir . '/cap_' . $this->session_key . '.txt';
+	    //$logger && $logger->info( 'class.captcha::get_pic: opening captcha file', ['f' => $hash_file] );
             $fh = fopen( $hash_file, 'w' );
 
             if ( ! $fh ) {
+		$logger && $logger->error( 'class.captcha::get_pic: cannot open captcha file', ['f' => $hash_file] );
                 return false;
             }
 
@@ -97,9 +106,15 @@ class captcha {
      * @return bool Success status
      */
     public function _generate_image( $location, $char_seq ) {
+	$logger = add_pn_logger();
+
         // Validate temp directory
         if ( ! is_dir( $this->temp_dir ) || ! is_writable( $this->temp_dir ) ) {
-            error_log( 'Captcha: temp directory not writable: ' . $this->temp_dir );
+	    // create temp dir
+	    mkdir( $this->temp_dir );
+	}
+        if ( ! is_dir( $this->temp_dir ) || ! is_writable( $this->temp_dir ) ) {
+            $logger && $logger->error( 'Captcha: temp directory not writable ', [ 'tempdir' => $this->temp_dir ] );
             return false;
         }
 
@@ -108,7 +123,7 @@ class captcha {
         $img = imagecreatetruecolor( $this->width, $this->height );
 
         if ( ! $img ) {
-            error_log( 'Captcha: Failed to create image' );
+            $logger && $logger->error( 'Captcha: Failed to create image');
             return false;
         }
 
@@ -139,7 +154,7 @@ class captcha {
         // Verify font file exists
         $fontpath = dirname( __FILE__ ) . '/default.ttf';
         if ( ! file_exists( $fontpath ) ) {
-            error_log( 'Captcha: Font file not found: ' . $fontpath );
+            $logger && $logger->error( 'Captcha: Font file not found', [ 'file' => $fontpath ] );
             imagedestroy( $img );
             return false;
         }

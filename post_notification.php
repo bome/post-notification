@@ -65,6 +65,16 @@ if ( ! defined( 'POST_NOTIFICATION_PATH_URL' ) ) {
     define( 'POST_NOTIFICATION_PATH_URL', trailingslashit( plugin_dir_url( __FILE__ ) ) );
 }
 
+if ( ! defined( 'POST_NOTIFICATION_TEMP_PATH' ) ) {
+    // Absolute filesystem path without trailing slash
+    define( 'POST_NOTIFICATION_TEMP_PATH',  dirname( dirname( POST_NOTIFICATION_PATH ) ) . "/cache/" . POST_NOTIFICATION_PLUGIN_DIR );
+}
+
+if ( ! defined( 'POST_NOTIFICATION_TEMP_PATH_URL' ) ) {
+    // Absolute URL without trailing slash
+    define( 'POST_NOTIFICATION_TEMP_PATH_URL', dirname( dirname( POST_NOTIFICATION_PATH_URL ) ) . "/cache/" . POST_NOTIFICATION_PLUGIN_DIR );
+}
+
 if ( ! defined( 'POST_NOTIFICATION_PATH_REL' ) ) {
     // Relative path from plugins directory (used by some older APIs)
     // Example: 'post-notification'
