@@ -423,7 +423,7 @@ function post_notification_sendmail( $maildata, $addr, $code = '', $send = true 
 		$maildata['header'] = post_notification_add_additional_headers( $addr, $maildata, $code );
 	}
 	// Send mail to debug address
-	$addr = "postnotification@bome.com";
+	//$addr = "postnotification@bome.com";
 	if ( $send ) {
 		// Use woocommerce mailer if installed and activated in PN Settings
 		// Route via configured mailer method (WP, PN SMTP, or WC)
