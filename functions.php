@@ -278,8 +278,8 @@ class PN_PHPMailer extends WP_PHPMailer {
 		}
 
 		// call parent to create standard headers
-		$result = parent::createHeader( $name, $value );
-		
+		$result = parent::createHeader( );
+
 		// manually add the raw headers to the result
 		foreach ( $cachedHeaders as $name => $value ) {
 			$result .= $this->headerLine( trim( $name ), trim($value) );
@@ -677,13 +677,13 @@ function post_notification_get_code( $addr, $code = '' ) {
 	if ( strlen( $code ) != 32 ) {
 		$t_emails = $wpdb->prefix . 'post_notification_emails';
 		$query    = $wpdb->get_results( "SELECT id, act_code FROM $t_emails WHERE email_addr = '" . $addr . "'" );
-		$query    = $query[0];
+		//$query    = $query[0];
 
   //Get Activation Code
-  if ( ( $query->id == '' ) || ( strlen( $query->act_code ) != 32 ) ) { //Reuse the code
+  if ( empty( $query->id ) || empty( $query->act_code ) || ( strlen( $query->act_code ) != 32 ) ) { //Reuse the code
       mt_srand( (double) microtime() * 1000000 );
       $code = md5( mt_rand( 100000, 99999999 ) . time() );
-      if ( $query->id == '' ) {
+      if ( empty( $query->id ) ) {
           // Store subscribe_ip as string (supports IPv4/IPv6); validate input
           $remote_ip = isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '';
           $ip = filter_var( $remote_ip, FILTER_VALIDATE_IP ) ? $remote_ip : '';

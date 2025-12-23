@@ -3,7 +3,7 @@
  * Plugin Name: Post Notification
  * Plugin URI: https://github.com/bome/post-notification
  * Description: Sends an email to all subscribers.
- * Version: 1.3.1
+ * Version: 1.3.2
  * Author: bome (based on other Authors, see README.md)
  * License: GPL v2
  * Requires at least: 5.0
