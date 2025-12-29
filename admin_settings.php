@@ -301,7 +301,7 @@ function post_notification_admin_sub() {
             // Save the page ID to the URL option
             update_option( 'post_notification_url', $post_ID );
 
-        echo '<H4>' . __( 'Data was updated.', 'post_notification' ) . '</H4>';
+        echo '<h3>' . __( 'Settings updated.', 'post_notification' ) . '</h3>';
     }
 
 
@@ -369,7 +369,7 @@ function post_notification_admin_sub() {
 
     <form id="update" method="post" action="admin.php?page=post_notification/admin.php&amp;action=settings">
         <?php wp_nonce_field( 'post_notification_update_settings', 'post_notification_nonce' ); ?>
-        <h4><?php _e( 'Newsletter / Mailings', 'post_notification' ); ?></h4>
+        <h3><?php _e( 'Newsletter / Mailings', 'post_notification' ); ?></h3>
         <table class="post_notification_admin_table">
             <tr class="pn_row">
                 <th class="pn_th_caption"><?php _e( 'Newsletter-Funktion aktivieren:', 'post_notification' ); ?></th>
@@ -382,7 +382,7 @@ function post_notification_admin_sub() {
             </tr>
         </table>
 
-        <h4> <?php _e( 'When to send', 'post_notification' ); ?></h4>
+        <h3> <?php _e( 'Sending', 'post_notification' ); ?></h3>
         <table class="post_notification_admin_table">
 
             <tr class="pn_row">
@@ -411,13 +411,22 @@ function post_notification_admin_sub() {
                         <option value="no" <?php echo post_notification_get_selected( 'send_page', 'no' ); ?>><?php _e( 'No', 'post_notification' ); ?></option>
                         <option value="yes" <?php echo post_notification_get_selected( 'send_page', 'yes' ); ?>><?php _e( 'Yes', 'post_notification' ); ?></option>
                     </select>
+                    <br/>
+                    <?php echo '<b>' . __( 'Note: You can always override the settings above when writing a post. There is a Post Notification box somewhere near the upload box when writing or editing a post.', 'post_notification' ) . '</b>'; ?>
                 </td>
             </tr>
 
             <tr class="pn_row">
-                <th class="pn_th_caption"><?php _e( 'Note:', 'post_notification' ); ?></th>
-                <td class="pn_td">
-                    <?php echo '<b>' . __( 'You can always override the settings above when writing a post. There is a Post Notification box somewhere near the upload box when writing or editing a post.', 'post_notification' ) . '</b>'; ?>
+                <th class="pn_th_caption"><?php _e( 'Number of mails to be sent in a burst:', 'post_notification' ); ?></th>
+                <td class="pn_td"><input name="maxmails" type="text" id="maxmail" size="35"
+                                         value="<?php echo esc_attr( get_option( 'post_notification_maxsend' ) ); ?>"/>
+                </td>
+            </tr>
+
+            <tr class="pn_row">
+                <th class="pn_th_caption"><?php _e( 'Pause between transmission:', 'post_notification' ); ?></th>
+                <td class="pn_td"><input name="pause" type="text" id="pause" size="35"
+                                         value="<?php echo esc_attr( get_option( 'post_notification_pause' ) ); ?>"/> <?php _e( 'seconds.', 'post_notification' ); ?>
                 </td>
             </tr>
 
@@ -426,17 +435,15 @@ function post_notification_admin_sub() {
                 <td class="pn_td">
                     <input name="nervous" type="text" id="nervous" size="35"
                            value="<?php echo esc_attr( get_option( 'post_notification_nervous' ) ); ?>"/> <?php _e( 'seconds.', 'post_notification' ); ?>
-                </td>
-            </tr>
-            <tr class="pn_row">
-                <td></td>
-                <td class="pn_td">
+                    <br/>
                     <?php _e( 'This option sets the time to wait before sending an Email. So if you have an nervous finger you can unpublish your post quickly and no mails are sent.', 'post_notification' ); ?>
                 </td>
             </tr>
 
         </table>
-        <h4> <?php _e( 'Look', 'post_notification' ); ?></h4>
+
+
+        <h3> <?php _e( 'Look', 'post_notification' ); ?></h3>
         <table class="post_notification_admin_table">
 
             <tr class="pn_row">
@@ -680,138 +687,61 @@ function post_notification_admin_sub() {
         </table>
 
 
-        <h4> <?php _e( 'Technical', 'post_notification' ); ?></h4>
-        <table class="post_notification_admin_table">
-
-            <tr class="pn_row">
-                <th class="pn_th_caption"><?php _e( 'Number of mails to be sent in a burst:', 'post_notification' ); ?></th>
-                <td class="pn_td"><input name="maxmails" type="text" id="maxmail" size="35"
-                                         value="<?php echo esc_attr( get_option( 'post_notification_maxsend' ) ); ?>"/>
-                </td>
-            </tr>
-
-
-            <tr class="pn_row">
-                <th class="pn_th_caption"><?php _e( 'Pause between transmission:', 'post_notification' ); ?></th>
-                <td class="pn_td"><input name="pause" type="text" id="pause" size="35"
-                                         value="<?php echo esc_attr( get_option( 'post_notification_pause' ) ); ?>"/> <?php _e( 'seconds.', 'post_notification' ); ?>
-                </td>
-            </tr>
-
-            <tr class="pn_row">
-                <th class="pn_th_caption"><?php _e( 'Type of header line break:', 'post_notification' ); ?></th>
-                <td class="pn_td">
-                    <select name="hdr_nl">
-                        <option value="rn" <?php echo post_notification_get_selected( 'hdr_nl', 'rn' ); ?>>\r\n</option>
-                        <option value="n" <?php echo post_notification_get_selected( 'hdr_nl', 'n' ); ?>>\n</option>
-                    </select>
-                </td>
-            </tr>
-            <tr class="pn_row">
-                <td></td>
-                <td class="pn_td">
-                    <?php
-                    _e(
-                            'According to RFC 5322, email headers must use \r\n (CRLF) line breaks. ' .
-                            'Some legacy servers had issues with this, requiring \n as a workaround. ' .
-                            'Modern mail systems (PHPMailer, wp_mail) fully support the standard \r\n. ' .
-                            'Use \r\n (default) unless you experience header issues in emails.',
-                            'post_notification'
-                    );
-                    ?>
-                </td>
-            </tr>
-
-            <tr class="pn_row">
-                <th class="pn_th_caption"><?php _e( 'Locking:', 'post_notification' ) ?></th>
-                <td class="pn_td">
-                    <select name="lock">
-                        <option value="file" <?php echo post_notification_get_selected( 'lock', 'file' ); ?>><?php _e( 'File', 'post_notification' ); ?></option>
-                        <option value="db" <?php echo post_notification_get_selected( 'lock', 'db' ); ?>><?php _e( 'Database', 'post_notification' ); ?></option>
-                    </select>
-                </td>
-            </tr>
-            <tr class="pn_row">
-                <td></td>
-                <td class="pn_td">
-                    <?php _e( 'Try using database locking if you are geting duplicate messages.', 'post_notification' );
-                    echo ' ' . '<a href="http://php.net/manual/function.flock.php">' . __( 'More information.', 'post_notification' ) . '</a>'; ?>
-                </td>
-            </tr>
-
-
-            <tr class="pn_row">
-
-                <th class="pn_th_caption">
-                    <?php _e( 'Filters to exclude from filtering "the_content":', 'post_notification' ); ?>
-                </th>
-                <td class="pn_td">
-                    <?php pn_render_the_content_exclude_checklist(); ?>
-                </td>
-            </tr>
-
-            <tr class="pn_row">
-                <td></td>
-                <td class="pn_td">
-                    <?php
-                    _e( 'Some plugins use filters to modify the content of a post. You might not want some of them modifying your mails. Finding the right filters might need some playing around.', 'post_notification' ); ?>
-                </td>
-            </tr>
-
-
-            </tr>
-
-            <tr class="pn_row">
-                <th class="pn_th_caption"><?php _e( 'When to send:', 'post_notification' ) ?></th>
-                <td class="pn_td">
-                    <select name="sendcheck">
-                        <option value="head" <?php echo post_notification_get_selected( 'sendcheck', 'head' ); ?>><?php _e( 'Header', 'post_notification' ); ?></option>
-                        <option value="footer" <?php echo post_notification_get_selected( 'sendcheck', 'footer' ); ?>><?php _e( 'Footer', 'post_notification' ); ?></option>
-                        <option value="shutdown" <?php echo post_notification_get_selected( 'sendcheck', 'shutdown' ); ?>><?php _e( 'Shutdown', 'post_notification' ); ?></option>
-                    </select>
-                </td>
-            </tr>
-            <tr class="pn_row">
-                <td></td>
-                <td class="pn_td">
-                    <?php _e( 'By default PN sends mails after the page has been rendered and sent to the user (shutdown).' . ' Some hosters kill all scripts after the connection has been closed. ' . 'You can try sending mails before the page is rendered (header) or before creating the footer of the ' . 'page (footer).', 'post_notification' ); ?>
-                </td>
-            </tr>
-            <tr class="pn_row">
-                <th class="pn_th_caption"><?php _e( 'Add user to PN when registering to WP:', 'post_notification' ); ?></th>
-                <td class="pn_td">
-                    <select name="auto_subscribe">
-                        <option value="no" <?php echo post_notification_get_selected( 'auto_subscribe', 'no' ); ?>><?php _e( 'No', 'post_notification' ); ?></option>
-                        <option value="yes" <?php echo post_notification_get_selected( 'auto_subscribe', 'yes' ); ?>><?php _e( 'Yes', 'post_notification' ); ?></option>
-                    </select>
-                </td>
-            </tr>
-            <tr class="pn_row">
-                <th class="pn_th_caption"><?php _e( 'Insert unsubscribe headers:', 'post_notification' ); ?></th>
-                <td class="pn_td">
-                    <select name="unsubscribe_link_in_header">
-                        <option value="no" <?php echo post_notification_get_selected( 'unsubscribe_link_in_header', 'no' ); ?>><?php _e( 'No', 'post_notification' ); ?></option>
-                        <option value="yes" <?php echo post_notification_get_selected( 'unsubscribe_link_in_header', 'yes' ); ?>><?php _e( 'Yes', 'post_notification' ); ?></option>
-                    </select>
-                </td>
-            </tr>
-
-            <tr class="pn_row">
-                <th class="pn_th_caption"><?php _e( 'Email used for unsubscribe header:', 'post_notification' ); ?></th>
-                <td class="pn_td"><input name="unsubscribe_email" type="text" id="pn_url" size="60"
-                                         value="<?php echo esc_attr( get_option( 'post_notification_unsubscribe_email' ) ); ?>"/>
-                </td>
-            </tr>
-        </table>
-
-
-        <h4> <?php _e( 'Frontend', 'post_notification' ); ?></h4>
+        <h3> <?php _e( 'Frontend', 'post_notification' ); ?></h3>
         <table class="post_notification_admin_table">
 
             <tr class="pn_row">
                 <th class="pn_th_caption"><?php _e( 'Name of the Post Notification page:', 'post_notification' ); ?></th>
                 <td class="pn_td"><input name="page_name" type="text" id="page_name" size="60"
                                          value="<?php echo esc_attr( get_option( 'post_notification_page_name' ) ); ?>"/>
+                </td>
+            </tr>
+
+            <tr class="pn_row">
+                <th class="pn_th_caption"><?php _e( 'Add Post Notification page:', 'post_notification' ); ?></th>
+                <td class="pn_td"><input name="add_page" type="checkbox" id="add_page" value="add"/></td>
+            </tr>
+
+
+            <tr class="pn_row">
+                <td></td>
+                <td class="pn_td">
+                    <?php _e( 'Adds a Post Notification page to your pages.', 'post_notification' ) . ' ';
+                    _e( 'The file "post_notification_template.php" has been copied into the active theme. You may want to edit this file to fit your needs.  ', 'post_notification' ); ?>
+                    <br/>
+                    <?php _e( 'This checkbox is cleared after execution.', 'post_notification' ); ?><br/>
+                    <?php _e( 'Also see the Instructions for this.', 'post_notification' ); ?>
+                </td>
+            </tr>
+
+
+            <tr class="pn_row">
+                <?php
+                $pn_page_url_caption_class = 'pn_th_caption';
+                $pn_page_url = get_option( 'post_notification_url' ); 
+                $pn_page_url_link = '';
+                if (empty( $pn_page_url )) {
+                    $pn_page_url_caption_class = 'pn_th_caption_warning';
+                    $pn_page_url = '';
+                } elseif ( is_numeric( $pn_page_url ) ) {
+                    $pn_page_url_link = get_permalink( (int) $pn_page_url );
+                }
+                ?>
+                <th class="<?php echo esc_attr( $pn_page_url_caption_class ); ?>"><?php _e( 'Post Notification page:', 'post_notification' ); ?></th>
+                <td class="pn_td">
+                    <input name="pn_url" type="text" id="pn_url" size="60"
+                                         value="<?php echo esc_attr( $pn_page_url ); ?>"/>
+                    <?php
+                    if ( ! empty( $pn_page_url_link ) ) {
+                        echo '                    <a href="' . esc_url( $pn_page_url_link ) . '" target="_blank">' . esc_html( $pn_page_url_link ) . "</a>\n";
+                    }
+                    echo "<br/>\n";
+                    _e( 'This must be the URL or the ID of the page on which you subscribe.', 'post_notification' ) . ' ';
+                    echo "<br/>\n";
+                    _e( 'If you pick "Add Post Notification page" this will be completed automatically.', 'post_notification' );
+                    echo "<br/>\n";
+                    _e( 'For more information, check the instructions.', 'post_notification' );
+                    ?>
                 </td>
             </tr>
 
@@ -907,47 +837,117 @@ function post_notification_admin_sub() {
                 </td>
             </tr>
 
-
-            <tr class="pn_row">
-                <th class="pn_th_caption"><?php _e( 'Add Post Notification page:', 'post_notification' ); ?></th>
-                <td class="pn_td"><input name="add_page" type="checkbox" id="add_page" value="add"/></td>
-            </tr>
-
-
-            <tr class="pn_row">
-                <td></td>
-                <td class="pn_td">
-                    <?php _e( 'Adds a Post Notification page to your pages.', 'post_notification' ) . ' ';
-                    _e( 'The file "post_notification_template.php" has been copied into the active theme. You may want to edit this file to fit your needs.  ', 'post_notification' ); ?>
-                    <br/>
-                    <?php _e( 'This checkbox is cleared after execution.', 'post_notification' ); ?><br/>
-                    <?php _e( 'Also see the Instructions for this.', 'post_notification' ); ?>
-                </td>
-            </tr>
-
-
-            <tr class="pn_row">
-                <th class="pn_th_caption"><?php _e( 'Link to the Post Notification page:', 'post_notification' ); ?></th>
-                <td class="pn_td"><input name="pn_url" type="text" id="pn_url" size="60"
-                                         value="<?php echo esc_attr( get_option( 'post_notification_url' ) ); ?>"/></td>
-            </tr>
-            <tr class="pn_row">
-                <td></td>
-                <td class="pn_td">
-                    <?php _e( 'This must be the URL or the ID of the page on which you subscribe.', 'post_notification' ) . ' ';
-                    _e( 'If you pick "Add Post Notification page" this will be compleated automaticly.', 'post_notification' ) . ' ';
-                    _e( 'Also see the Instructions for this.', 'post_notification' ); ?>
-                </td>
-            </tr>
-
-
-            <tr class="pn_row">
-                <td></td>
-            </tr>
-
-
         </table>
-        <h4> <?php _e( 'Miscellaneous', 'post_notification' ); ?></h4>
+
+
+        <h3> <?php _e( 'Technical', 'post_notification' ); ?></h3>
+        <table class="post_notification_admin_table">
+
+            <tr class="pn_row">
+                <th class="pn_th_caption"><?php _e( 'Type of header line break:', 'post_notification' ); ?></th>
+                <td class="pn_td">
+                    <select name="hdr_nl">
+                        <option value="rn" <?php echo post_notification_get_selected( 'hdr_nl', 'rn' ); ?>>\r\n</option>
+                        <option value="n" <?php echo post_notification_get_selected( 'hdr_nl', 'n' ); ?>>\n</option>
+                    </select>
+                </td>
+            </tr>
+            <tr class="pn_row">
+                <td></td>
+                <td class="pn_td">
+                    <?php
+                    _e(
+                            'According to RFC 5322, email headers must use \r\n (CRLF) line breaks. ' .
+                            'Some legacy servers had issues with this, requiring \n as a workaround. ' .
+                            'Modern mail systems (PHPMailer, wp_mail) fully support the standard \r\n. ' .
+                            'Use \r\n (default) unless you experience header issues in emails.',
+                            'post_notification'
+                    );
+                    ?>
+                </td>
+            </tr>
+
+            <tr class="pn_row">
+                <th class="pn_th_caption"><?php _e( 'Locking:', 'post_notification' ) ?></th>
+                <td class="pn_td">
+                    <select name="lock">
+                        <option value="file" <?php echo post_notification_get_selected( 'lock', 'file' ); ?>><?php _e( 'File', 'post_notification' ); ?></option>
+                        <option value="db" <?php echo post_notification_get_selected( 'lock', 'db' ); ?>><?php _e( 'Database', 'post_notification' ); ?></option>
+                    </select>
+                </td>
+            </tr>
+            <tr class="pn_row">
+                <td></td>
+                <td class="pn_td">
+                    <?php _e( 'Try using database locking if you are geting duplicate messages.', 'post_notification' );
+                    echo ' ' . '<a href="http://php.net/manual/function.flock.php">' . __( 'More information.', 'post_notification' ) . '</a>'; ?>
+                </td>
+            </tr>
+
+
+            <tr class="pn_row">
+
+                <th class="pn_th_caption">
+                    <?php _e( 'Filters to exclude from filtering "the_content":', 'post_notification' ); ?>
+                </th>
+                <td class="pn_td">
+                    <?php pn_render_the_content_exclude_checklist(); ?>
+                </td>
+            </tr>
+
+            <tr class="pn_row">
+                <td></td>
+                <td class="pn_td">
+                    <?php
+                    _e( 'Some plugins use filters to modify the content of a post. You might not want some of them modifying your mails. Finding the right filters might need some playing around.', 'post_notification' ); ?>
+                </td>
+            </tr>
+
+            <tr class="pn_row">
+                <th class="pn_th_caption"><?php _e( 'When to send:', 'post_notification' ) ?></th>
+                <td class="pn_td">
+                    <select name="sendcheck">
+                        <option value="head" <?php echo post_notification_get_selected( 'sendcheck', 'head' ); ?>><?php _e( 'Header', 'post_notification' ); ?></option>
+                        <option value="footer" <?php echo post_notification_get_selected( 'sendcheck', 'footer' ); ?>><?php _e( 'Footer', 'post_notification' ); ?></option>
+                        <option value="shutdown" <?php echo post_notification_get_selected( 'sendcheck', 'shutdown' ); ?>><?php _e( 'Shutdown', 'post_notification' ); ?></option>
+                    </select>
+                </td>
+            </tr>
+            <tr class="pn_row">
+                <td></td>
+                <td class="pn_td">
+                    <?php _e( 'By default PN sends mails after the page has been rendered and sent to the user (shutdown).' . ' Some hosters kill all scripts after the connection has been closed. ' . 'You can try sending mails before the page is rendered (header) or before creating the footer of the ' . 'page (footer).', 'post_notification' ); ?>
+                </td>
+            </tr>
+            <tr class="pn_row">
+                <th class="pn_th_caption"><?php _e( 'Add user to PN when registering to WP:', 'post_notification' ); ?></th>
+                <td class="pn_td">
+                    <select name="auto_subscribe">
+                        <option value="no" <?php echo post_notification_get_selected( 'auto_subscribe', 'no' ); ?>><?php _e( 'No', 'post_notification' ); ?></option>
+                        <option value="yes" <?php echo post_notification_get_selected( 'auto_subscribe', 'yes' ); ?>><?php _e( 'Yes', 'post_notification' ); ?></option>
+                    </select>
+                </td>
+            </tr>
+            <tr class="pn_row">
+                <th class="pn_th_caption"><?php _e( 'Insert unsubscribe headers:', 'post_notification' ); ?></th>
+                <td class="pn_td">
+                    <select name="unsubscribe_link_in_header">
+                        <option value="no" <?php echo post_notification_get_selected( 'unsubscribe_link_in_header', 'no' ); ?>><?php _e( 'No', 'post_notification' ); ?></option>
+                        <option value="yes" <?php echo post_notification_get_selected( 'unsubscribe_link_in_header', 'yes' ); ?>><?php _e( 'Yes', 'post_notification' ); ?></option>
+                    </select>
+                </td>
+            </tr>
+
+            <tr class="pn_row">
+                <th class="pn_th_caption"><?php _e( 'Email used for unsubscribe header:', 'post_notification' ); ?></th>
+                <td class="pn_td"><input name="unsubscribe_email" type="text" id="pn_url" size="60"
+                                         value="<?php echo esc_attr( get_option( 'post_notification_unsubscribe_email' ) ); ?>"/>
+                </td>
+            </tr>
+        </table>
+
+
+        <h3> <?php _e( 'Miscellaneous', 'post_notification' ); ?></h3>
         <table class="post_notification_admin_table">
 
             <tr class="pn_row">

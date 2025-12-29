@@ -61,14 +61,19 @@
 }
 .post_notification_admin_table .pn_th_caption {
   text-align: right;
+  vertical-align: top;
   width: 25%;
   min-width: 100px;
-  padding: 5px;
+  padding: 10px 5px 5px 5px;
 }
 .post_notification_admin_table .pn_th_caption_warning {
-  width: 100%;
-  text-align: center;
-  color: darkred;
+  text-align: right;
+  vertical-align: top;
+  width: 25%;
+  min-width: 100px;
+  padding: 10px 5px 5px 5px;
+  color: white;
+  background: darkred;
 }
 .post_notification_admin_table .pn_td {
   width: 75%;
