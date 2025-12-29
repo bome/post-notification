@@ -283,7 +283,7 @@ function post_notification_page_content() {
 					$conf_url = post_notification_get_mailurl( $addr ) . '&action=unsubscribe';
 					$mailmsg = post_notification_ldfile( 'unsubscribe.tmpl' );
 					$mailmsg = str_replace( array( '@@addr', '@@conf_url' ), array( $addr, $conf_url ), $mailmsg );
-     pn_send_mail( $addr, "$blogname - " . $post_notification_strings['deaktivated'], $mailmsg, post_notification_header() );
+					pn_send_mail( $addr, "$blogname - " . $post_notification_strings['deaktivated'], $mailmsg, post_notification_header() );
 				}
 
 				$content['header'] = $post_notification_strings['deaktivated'];
@@ -330,11 +330,9 @@ function post_notification_page_content() {
 		$msg = str_replace( '@@addr', esc_attr( $addr ), $msg );
 		$msg = str_replace( '@@cats', '', $msg );
 		$msg = str_replace( '@@vars', $vars, $msg );
-
-		// ✅ KORRIGIERT: Nur EINMAL spam protection hinzufügen
-		$msg = post_notification_add_spam_protection( $msg );
 	}
 
+	$msg = post_notification_add_spam_protection( $msg );
 	$content['body'] = $msg;
 	$post_notification_page_content_glob = $content;
 
@@ -429,6 +427,12 @@ function post_notification_check_captcha() {
 	return $my_captcha->verify( $captcha );
 }
 
+/** remove captcha placeholder if not needed */
+function post_notification_remove_captcha_placeholder( $html ) {
+	return preg_replace( '/<!--capt-->(.*?)<!--cha-->/is', '', $html );
+}
+
+
 /**
  * Add spam protection to form (WP Armour or Honeypot/Captcha)
  *
@@ -438,6 +442,7 @@ function post_notification_check_captcha() {
 function post_notification_add_spam_protection( $html ) {
 	// Priority: Use WP Armour if available
 	if ( post_notification_is_wp_armour_active() ) {
+		$html = post_notification_remove_captcha_placeholder( $html );
 		return post_notification_add_wp_armour( $html );
 	}
 
@@ -490,10 +495,8 @@ function post_notification_add_honeypot( $html ) {
  */
 function post_notification_add_captcha( $html ) {
 	$captcha_length = absint( get_option( 'post_notification_captcha' ) );
-
 	if ( $captcha_length === 0 ) {
-		// Remove captcha placeholder
-		return preg_replace( '/<!--capt-->(.*?)<!--cha-->/is', '', $html );
+		return post_notification_remove_captcha_placeholder( $html );
 	}
 
 	require_once( POST_NOTIFICATION_PATH . 'class.captcha.php' );
@@ -505,6 +508,8 @@ function post_notification_add_captcha( $html ) {
 		$captchaimg = POST_NOTIFICATION_TEMP_PATH_URL . '/cap_' . $captcha_hash . '.jpg';
 		$html = str_replace( '@@captchaimg', esc_url( $captchaimg ), $html );
 		$html = str_replace( '@@captchacode', esc_attr( $captcha_code ), $html );
+	} else {
+		$html = post_notification_remove_captcha_placeholder( $html );
 	}
 
 	return $html;
