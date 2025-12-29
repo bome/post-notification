@@ -7,6 +7,45 @@
 # Wordpress. Please see the readme.txt for details.
 #------------------------------------------------------
 
+require_once plugin_dir_path( __FILE__ ) . 'add_logger.php';
+
+function pn_get_logger() {
+    global $pn_debug;
+    global $pn_logger;
+    if ( !isset ( $pn_debug ) || $pn_debug === null ) {
+        $pn_debug = get_option( 'post_notification_debug' ) === 'yes';
+    }
+    if ( $pn_debug ) {
+        if ( !isset( $pn_logger ) || $pn_logger === null ) {
+            $pn_logger = function_exists( 'add_pn_logger' ) ? add_pn_logger( 'pn' ) : null;
+        } else {
+            $pn_logger = null;
+        }
+    } else {
+        $pn_logger = null;
+    }
+    return $pn_logger;
+}
+
+function pn_set_option( $option, $value ) {
+    $logger = pn_get_logger();
+    if ( $logger ) {
+        // check if option has changed
+        $old_value = get_option( $option );
+        $new_value = $value;
+        // if new_value is int, convert to string for comparison
+        if ( is_numeric( $new_value ) ) {
+            $new_value = (string) $new_value;
+        }
+        if ( $old_value !== $new_value ) {
+            $logger->info( 'Updating option', [ 'option' => $option, 'old_value' => $old_value, 'new_value' => $new_value ] );
+        } else {
+            //$logger->info( 'Option unchanged', [ 'option' => $option, 'value' => $new_value ] );
+        }
+    }
+    
+    update_option( $option, $value );
+}
 
 function post_notification_is_file( $path, $file ) {
     if ( ! is_file( $path . '/' . $file ) ) {
@@ -178,7 +217,14 @@ function post_notification_admin_sub() {
 
                 case 'array':
                     if ( is_array( $value ) ) {
-                        $sanitized_value = serialize( array_map( 'sanitize_text_field', $value ) );
+                        // log array values
+                        //$logger = pn_get_logger();
+                        //$value = array_map( 'sanitize_text_field', $value );
+                        //if ( $logger ) {
+                        //    $logger->info( 'Processing array option: ' . $option_name . " with " . count( $value ) . " items:", $value );
+                        //}
+
+                        $sanitized_value = serialize( $value );
                     } else {
                         $sanitized_value = serialize( array() );
                     }
@@ -207,7 +253,7 @@ function post_notification_admin_sub() {
                     break;
             }
 
-            update_option( $option_name, $sanitized_value );
+            pn_set_option( $option_name, $sanitized_value );
         }
 
         // Handle SMTP password: only update if a non-placeholder, non-empty value submitted
@@ -216,7 +262,7 @@ function post_notification_admin_sub() {
             // Detect placeholder bullets (10 dots) and empty
             $is_placeholder = ( trim( $raw_pass ) === str_repeat('•', 10) );
             if ( ! $is_placeholder && $raw_pass !== '' ) {
-                update_option( 'post_notification_smtp_pass', sanitize_text_field( $raw_pass ) );
+                pn_set_option( 'post_notification_smtp_pass', sanitize_text_field( $raw_pass ) );
             }
         }
 
@@ -226,8 +272,8 @@ function post_notification_admin_sub() {
             $en_template = sanitize_file_name( $_POST['en_template'] );
 
             if ( is_file( POST_NOTIFICATION_PATH . $en_profile . '/' . $en_template ) || is_file( POST_NOTIFICATION_DATA . $en_profile . '/' . $en_template ) ) {
-                update_option( 'post_notification_profile', $en_profile );
-                update_option( 'post_notification_template', $en_template );
+                pn_set_option( 'post_notification_profile', $en_profile );
+                pn_set_option( 'post_notification_template', $en_template );
             } else {
                 // Don't save any profile/template information to avoid inconsistent state
                 echo '<div class="error">' . __( 'Could not find the template in this profile. Please select a template and save again.', 'post_notification' ) . '</div>';
@@ -244,9 +290,9 @@ function post_notification_admin_sub() {
                     $categoryList .= ',' . absint( $category );
                 }
             }
-            update_option( 'post_notification_selected_cats', substr( $categoryList, 1 ) );
+            pn_set_option( 'post_notification_selected_cats', substr( $categoryList, 1 ) );
         } else {
-            update_option( 'post_notification_selected_cats', '' );
+            pn_set_option( 'post_notification_selected_cats', '' );
         }
 
         // Handle page creation if requested
@@ -273,6 +319,9 @@ function post_notification_admin_sub() {
 
             // Insert the page
             $post_ID = wp_insert_post( $post_data );
+
+            // Save the page ID to the URL option
+            pn_set_option( 'post_notification_url', $post_ID );
         }
 
         // Safer handling for uninstall option
@@ -287,25 +336,18 @@ function post_notification_admin_sub() {
                 echo '<div class="error"><p>' . __( 'Uninstall not armed. Please confirm the checkbox and type DELETE to proceed.', 'post_notification' ) . '</p></div>';
             }
         }
-        update_option( 'post_notification_uninstall', $set_uninstall );
+        pn_set_option( 'post_notification_uninstall', $set_uninstall );
 
-        // Continue with rest of processing
-        // Insert the page
-        $post_ID = isset($post_ID) ? $post_ID : null;
+        // Add page template meta if we are using the template
+        if ( get_option( 'post_notification_filter_include' ) === 'no' ) {
+            add_post_meta( $post_ID, '_wp_page_template', 'post_notification_template.php', true );
+        }
 
-            // Add page template meta if we are using the template
-            if ( get_option( 'post_notification_filter_include' ) === 'no' ) {
-                add_post_meta( $post_ID, '_wp_page_template', 'post_notification_template.php', true );
-            }
-
-            // Save the page ID to the URL option
-            update_option( 'post_notification_url', $post_ID );
-
-        echo '<h3>' . __( 'Settings updated.', 'post_notification' ) . '</h3>';
+        echo '<h4>' . __( '✅ Settings updated.', 'post_notification' ) . '</h4>';
     }
 
 
-    // Try to install the theme in case we need it. There be no warning. Warnings are only on the info-page.
+    // Try to install the theme in case we need it. There will be no warning. Warnings are only on the info page.
     post_notification_installtheme();
 
     //Find Profiles

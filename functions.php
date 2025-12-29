@@ -956,6 +956,10 @@ function pn_get_saved_the_content_excludes(): array {
 		// Backward compatibility: legacy serialized value
 		$maybe = @unserialize( $saved );
 		if ( $maybe !== false || $saved === 'b:0;' ) {
+			$logger = function_exists( 'add_pn_logger' ) ? add_pn_logger( 'pn' ) : null;
+			if ( $logger ) {
+				$logger->info( 'Migrated legacy serialized the_content exclude list:', [ 'data' => $saved ] );
+			}
 			$saved = $maybe;
 		}
 	}
@@ -966,14 +970,14 @@ function pn_get_saved_the_content_excludes(): array {
 /**
  * Render the checklist UI for excludes. Call from your settings page.
  */
+// TODO: collect all items first (including missing ones), then render sorted by warning level + name
 function pn_render_the_content_exclude_checklist(): void {
 	$items    = pn_collect_the_content_callbacks();
 	$selected = pn_get_saved_the_content_excludes();
+	$rendered_selected = [];
 
-	if ( empty( $items ) ) {
-		echo '<p><em>No filters found on <code>the_content</code>.</em></p>';
-		return;
-	}
+	//$logger = function_exists( 'add_pn_logger' ) ? add_pn_logger( 'pn' ) : null;
+	$logger = null;
 
 	echo '<div class="pn-filter-list">';
 
@@ -982,11 +986,44 @@ function pn_render_the_content_exclude_checklist(): void {
 		$is_checked  = in_array( $callback_id, $selected, true );
 		$priority    = (int) $item['priority'];
 
-		// nutzt deine neue Helper-Funktion mit Name + Kurzbeschreibung:
+		if ( $logger ) {
+			$logger->debug( 'Rendering the_content filter item.', [
+				'callback_id' => $callback_id,
+				'is_checked'  => $is_checked,
+				'priority'    => $priority,
+			] );
+		}
+
+		// render with helper
 		pn_render_filter_checkbox_line( $callback_id, $is_checked, $priority );
+
+		if ( $is_checked ) {
+			$rendered_selected[] = $callback_id;
+		}
+	}
+
+	$missing = array_diff( $selected, $rendered_selected );
+
+	if ( $logger ) {
+		$logger->info( 'Rendered the_content exclude checklist.', [
+			'total_items'        => count( $items ),
+			'saved_excludes'     => count( $selected ),
+			'rendered_excludes'  => count( $rendered_selected ),
+			'missing'            => count( $missing ),
+		] );
+	}
+
+	// now render any selected items that are no longer present
+	foreach ( $missing as $callback_id ) {
+		// render with helper
+		pn_render_filter_checkbox_line( $callback_id, true, 99 );
 	}
 
 	echo '</div>';
+
+	if ( empty( $items ) && empty( $missing ) ) {
+		echo '<p><em>No filters found on <code>the_content</code>.</em></p>';
+	}
 }
 
 /**
