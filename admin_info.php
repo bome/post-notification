@@ -61,7 +61,7 @@ function post_notification_admin_sub() {
 
 
 	if ( get_option( 'post_notification_debug' ) == 'yes' ) {
-		echo '<div class="error">' . __( 'PN is in debugging mode. This should only be on, if something isn\'t working correctly.', 'post_notification' ) . '</div>';
+		echo '<div class="error">' . __( 'PN is in debugging mode. This should only be on if something isn\'t working correctly.', 'post_notification' ) . '</div>';
 	}
 	if ( get_option( 'post_notification_uninstall' ) == 'yes' ) {
 		require_once( POST_NOTIFICATION_PATH . "install.php" );

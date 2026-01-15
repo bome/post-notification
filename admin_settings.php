@@ -10,19 +10,9 @@
 require_once plugin_dir_path( __FILE__ ) . 'add_logger.php';
 
 function pn_get_logger() {
-    global $pn_debug;
     global $pn_logger;
-    if ( !isset ( $pn_debug ) || $pn_debug === null ) {
-        $pn_debug = get_option( 'post_notification_debug' ) === 'yes';
-    }
-    if ( $pn_debug ) {
-        if ( !isset( $pn_logger ) || $pn_logger === null ) {
-            $pn_logger = function_exists( 'add_pn_logger' ) ? add_pn_logger( 'pn' ) : null;
-        } else {
-            $pn_logger = null;
-        }
-    } else {
-        $pn_logger = null;
+    if ( !isset( $pn_logger ) || $pn_logger === null ) {
+        $pn_logger = function_exists( 'add_pn_logger' ) ? add_pn_logger( 'pn' ) : null;
     }
     return $pn_logger;
 }
@@ -466,9 +456,30 @@ function post_notification_admin_sub() {
             </tr>
 
             <tr class="pn_row">
+                <?php
+                	global $wpdb;
+                	$t_emails = $wpdb->prefix . 'post_notification_emails';
+
+                    $maxsend = get_option( 'post_notification_maxsend' );
+                    $pause = get_option( 'post_notification_pause' );
+                    $emails_per_hour = ( $maxsend > 0 && $pause >= 0 ) ? floor( 3600 * $maxsend / $pause ) : 0;
+                    $nummails = $wpdb->get_var( "SELECT COUNT(*) FROM $t_emails WHERE gets_mail = 1" );
+                    $hours = ( $emails_per_hour > 0 ) ? ceil( $nummails * 10 / $emails_per_hour ) / 10.0 : 0;
+                ?>
                 <th class="pn_th_caption"><?php _e( 'Pause between transmission:', 'post_notification' ); ?></th>
                 <td class="pn_td"><input name="pause" type="text" id="pause" size="35"
-                                         value="<?php echo esc_attr( get_option( 'post_notification_pause' ) ); ?>"/> <?php _e( 'seconds.', 'post_notification' ); ?>
+                                         value="<?php echo esc_attr( get_option( 'post_notification_pause' ) ); ?>"/> <?php 
+                                         _e( 'seconds.', 'post_notification' ); 
+                                         if ( $emails_per_hour > 0 ) {
+                                             echo '<br/>' . sprintf( __( 'Approximately %d emails/hour', 'post_notification' ), $emails_per_hour );
+                                         }
+                                        if ( $hours > 0 ) {
+                                            if ( $emails_per_hour > 0 ) {
+                                                echo ', ';
+                                            }
+                                            echo sprintf( __( 'sending to all %d subscribers takes approx. %0.1f hours.', 'post_notification' ), $nummails, $hours );
+                                        }
+                                         ?>
                 </td>
             </tr>
 

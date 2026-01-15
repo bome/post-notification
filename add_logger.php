@@ -6,14 +6,8 @@ use Monolog\Handler\StreamHandler;
 use Monolog\Level;
 use Monolog\Logger;
 
-function add_pn_logger( $loggerName = 'post-notification' ) {
-	static $loggers = array();
-	if ( ! isset( $loggers[ $loggerName ] ) ) {
-		$dateFormat = "d.m. - H:i:s";
-		// include channel so multiple logical loggers share one file with prefixes
-		$output     = "[%datetime%] | %level_name% [%channel%]: %message% %context% %extra%\n";
-		$formatter  = new LineFormatter( $output, $dateFormat );
-
+// @return the PN log dir with trailing slash
+function pn_get_log_dir() {
 		// Determine log directory from settings
 		$mode = get_option( 'post_notification_log_dir_mode', 'default' );
 		$custom = trim( (string) get_option( 'post_notification_log_dir_custom', '' ) );
@@ -34,14 +28,27 @@ function add_pn_logger( $loggerName = 'post-notification' ) {
 			@mkdir( $log_dir, 0775, true );
 		}
 
+		return $log_dir;
+}
+
+
+function add_pn_logger( $loggerName = 'post-notification', $filename = 'post-notification.log' ) {
+	static $loggers = array();
+	if ( ! isset( $loggers[ $loggerName ] ) ) {
+		$dateFormat = "Y-m-d H:i:s";
+		// include channel so multiple logical loggers share one file with prefixes
+		$output     = "[%datetime%] | %level_name% [%channel%]: %message% %context% %extra%\n";
+		$formatter  = new LineFormatter( $output, $dateFormat );
+
 		// Single shared logfile name as requested
-		$file = $log_dir . 'post-notification.log';
+		$file = pn_get_log_dir() . $filename;
 
 		if ( ! file_exists( $file ) ) {
 			@touch( $file );
 		}
 
-		$streamHandler = new StreamHandler( $file, Level::Debug );
+		$level = ( get_option( 'post_notification_debug' ) === 'yes') ? Level::Debug : Level::Info;
+		$streamHandler = new StreamHandler( $file, $level );
 		$streamHandler->setFormatter( $formatter );
 
 		$logger = new Logger( $loggerName );
@@ -54,10 +61,6 @@ function add_pn_logger( $loggerName = 'post-notification' ) {
 			$errorMailer = new NativeMailerHandler( $admin_emails, $servername . ': PostNotification - Error', $servername, Level::Error, true, 70 );
 			$errorMailer->setFormatter( $formatter );
 			$logger->pushHandler( $errorMailer );
-
-			$infoMailer = new NativeMailerHandler( $admin_emails, $servername . ': PostNotification - Info', $servername, Level::Info, true, 70 );
-			$infoMailer->setFormatter( $formatter );
-			$logger->pushHandler( $infoMailer );
 		}
 
 		$loggers[ $loggerName ] = $logger;

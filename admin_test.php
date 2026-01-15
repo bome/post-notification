@@ -216,7 +216,7 @@ function post_notification_process_test_email() {
 
     // Send or preview email
     $send = ! $nosend;
-    $maildata = post_notification_sendmail( $maildata, $email_data->email_addr, '', $send );
+    $maildata = post_notification_sendmail( $maildata, $email_data->email_addr, '', $send, true /* is_test */ );
 
     // Display results
     if ( $send ) {

@@ -679,35 +679,34 @@ function post_notification_get_code( $addr, $code = '' ) {
 		$query    = $wpdb->get_results( "SELECT id, act_code FROM $t_emails WHERE email_addr = '" . $addr . "'" );
 		//$query    = $query[0];
 
-  //Get Activation Code
-  if ( empty( $query->id ) || empty( $query->act_code ) || ( strlen( $query->act_code ) != 32 ) ) { //Reuse the code
-      mt_srand( (double) microtime() * 1000000 );
-      $code = md5( mt_rand( 100000, 99999999 ) . time() );
-      if ( empty( $query->id ) ) {
-          // Store subscribe_ip as string (supports IPv4/IPv6); validate input
-          $remote_ip = isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '';
-          $ip = filter_var( $remote_ip, FILTER_VALIDATE_IP ) ? $remote_ip : '';
-          $wpdb->query(
-              $wpdb->prepare(
-                  "INSERT INTO $t_emails (email_addr,date_subscribed, act_code, subscribe_ip) VALUES (%s, %s, %s, %s)",
-                  $addr,
-                  post_notification_date2mysql(),
-                  $code,
-                  $ip
-              )
-          );
-      } else {
-          $wpdb->query(
-              "UPDATE $t_emails SET act_code = '$code' WHERE email_addr = '" . $addr . "'"
-          );
-      }
-  } else {
-      $code = $query->act_code;
-  }
+		//Get Activation Code
+		if ( empty( $query->id ) || empty( $query->act_code ) || ( strlen( $query->act_code ) != 32 ) ) { //Reuse the code
+			mt_srand( (double) microtime() * 1000000 );
+			$code = md5( mt_rand( 100000, 99999999 ) . time() );
+			if ( empty( $query->id ) ) {
+				// Store subscribe_ip as string (supports IPv4/IPv6); validate input
+				$remote_ip = isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '';
+				$ip = filter_var( $remote_ip, FILTER_VALIDATE_IP ) ? $remote_ip : '';
+				$wpdb->query(
+					$wpdb->prepare(
+						"INSERT INTO $t_emails (email_addr,date_subscribed, act_code, subscribe_ip) VALUES (%s, %s, %s, %s)",
+						$addr,
+						post_notification_date2mysql(),
+						$code,
+						$ip
+					)
+				);
+			} else {
+				$wpdb->query(
+					"UPDATE $t_emails SET act_code = '$code' WHERE email_addr = '" . $addr . "'"
+				);
+			}
+		} else {
+			$code = $query->act_code;
+		}
 	}
 
 	return $code;
-
 }
 
 function post_notification_get_list_name() {
@@ -958,7 +957,7 @@ function pn_get_saved_the_content_excludes(): array {
 		if ( $maybe !== false || $saved === 'b:0;' ) {
 			$logger = function_exists( 'add_pn_logger' ) ? add_pn_logger( 'pn' ) : null;
 			if ( $logger ) {
-				$logger->info( 'Migrated legacy serialized the_content exclude list:', [ 'data' => $saved ] );
+				$logger->debug( 'Migrated legacy serialized the_content exclude list:', [ 'data' => $saved ] );
 			}
 			$saved = $maybe;
 		}

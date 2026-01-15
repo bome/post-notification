@@ -7,6 +7,13 @@
 # Wordpress. Please see the readme.txt for details.
 #------------------------------------------------------
 
+// log send actions in detail to post-notification-send_<date>.log
+global $pn_write_send_log;
+$pn_write_send_log = true;
+
+require_once plugin_dir_path( __FILE__ ) . 'add_logger.php';
+
+
 function post_notification_arrayreplace( $input, $array ) {
 	foreach ( $array as $s => $r ) {
 		$input = str_replace( $s, $r, $input );
@@ -276,7 +283,7 @@ function pn_email_sanitize_html( string $html, string $base = '' ): string {
 	$html = preg_replace( '#<\s*(base|link)\b[^>]*\/?>#is', '', $html );
 
 	if ( $logger && $before !== $html ) {
-		$logger->info( 'pn_email_sanitize_html: stripped disallowed tags from content' );
+		$logger->debug( 'pn_email_sanitize_html: stripped disallowed tags from content' );
 	}
 
 	// absolutize href/src on a and img only
@@ -296,7 +303,7 @@ function pn_email_sanitize_html( string $html, string $base = '' ): string {
 	];
 	$wrapped = mb_encode_numericentity($wrapped, $convmap, "UTF-8");
 
-	//$logger && $logger->info( 'pn_email_sanitize_html:', [ 'htmlentities-len' => strlen($wrapped) ] );
+	//$logger && $logger->debug( 'pn_email_sanitize_html:', [ 'htmlentities-len' => strlen($wrapped) ] );
 
 	$dom->loadHTML( '<?xml encoding="UTF-8">' . $wrapped, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD );
 	$home = rtrim( $base ?: home_url( '/', 'https' ), '/' );
@@ -348,7 +355,7 @@ function pn_email_sanitize_html( string $html, string $base = '' ): string {
 	}
 	libxml_clear_errors();
 
-	//$logger && $logger->info( 'pn_email_sanitize_html:', [ 'saveHTML-len' => strlen($out) ] );
+	//$logger && $logger->debug( 'pn_email_sanitize_html:', [ 'saveHTML-len' => strlen($out) ] );
 
 	// allow only email-friendly tags + a minimal style attr
 	$allowed   = [
@@ -392,21 +399,28 @@ function pn_email_sanitize_html( string $html, string $base = '' ): string {
 	$sanitized = wp_kses( $out, $allowed );
 
 	if ( $logger && $sanitized !== $out ) {
-		$logger->info( 'pn_email_sanitize_html: removed disallowed attributes/tags via wp_kses' );
+		$logger->debug( 'pn_email_sanitize_html: removed disallowed attributes/tags via wp_kses' );
 	}
 
-	//$logger && $logger->info( 'pn_email_sanitize_html:', [ 'wp_kses-len' => strlen($sanitized) ] );
-
+	//$logger && $logger->debug( 'pn_email_sanitize_html:', [ 'wp_kses-len' => strlen($sanitized) ] );
 	// remove empty <p>
 	$sanitized = preg_replace( '#<p>\s*(?:&nbsp;|\xC2\xA0|\s)*</p>#i', '', $sanitized );
 
-	//$logger && $logger->info( 'pn_email_sanitize_html:', [ 'preg_replace-len' => strlen($sanitized) ] );
-
+	//$logger && $logger->debug( 'pn_email_sanitize_html:', [ 'preg_replace-len' => strlen($sanitized) ] );
 	return trim( $sanitized );
 }
 
 
-function post_notification_sendmail( $maildata, $addr, $code = '', $send = true ) {
+function post_notification_get_sendlog_filename() {
+	$filename = pn_get_log_dir() . 'post-notification-send_' . date( 'Y-m-d' ) . '.log';
+	if ( ! file_exists( $filename ) ) {
+		@touch( $filename );
+	}
+	return $filename;
+}
+
+
+function post_notification_sendmail( $maildata, $addr, $code = '', $send = true, $is_test = false ) {
 	$maildata['body'] = str_replace( '@@addr', $addr, $maildata['body'] );
 
 	$conf_url = post_notification_get_mailurl( $addr, $code );
@@ -422,8 +436,34 @@ function post_notification_sendmail( $maildata, $addr, $code = '', $send = true 
 	if ( \get_option( 'post_notification_unsubscribe_link_in_header' ) == 'yes' ) {
 		$maildata['header'] = post_notification_add_additional_headers( $addr, $maildata, $code );
 	}
-	// Send mail to debug address
+
+	global $pn_write_send_log;
+	if ( $pn_write_send_log ) {
+		// For testing, write progress to a file
+		$send_log_filename = post_notification_get_sendlog_filename();
+
+		// Check if the TO email address is already in the file
+		if ( $send && !$is_test && file_exists( $send_log_filename ) ) {
+			$contents = file_get_contents( $send_log_filename );
+			if ( strpos( $contents, "<$addr>" ) !== false ) {
+				// Address found, skip sending
+				$maildata['sent'] = false;
+				file_put_contents( $send_log_filename, date( 'Y-m-d H:i:s' ) . " - FOOLISHLY REFUSING DUPLICATE: <$addr>\n", FILE_APPEND );
+				return $maildata;
+			}
+		}
+
+		if ( !$is_test ) {
+			file_put_contents( $send_log_filename, date( 'Y-m-d H:i:s' ) . " - SEND: <$addr>\n", FILE_APPEND );
+		}
+	}
+
+	// DEBUG!!
+	// send mail to a debug address, set subject with [TEST] - $email
+	//$maildata['subject'] = '[TEST] - ' . $addr;
 	//$addr = "postnotification@bome.com";
+	// END DEBUG CODE
+
 	if ( $send ) {
 		// Use woocommerce mailer if installed and activated in PN Settings
 		// Route via configured mailer method (WP, PN SMTP, or WC)
@@ -440,18 +480,40 @@ function post_notification_sendmail( $maildata, $addr, $code = '', $send = true 
 function post_notification_send() {
 	global $wpdb, $timestart;
 
-	if ( get_option( 'post_notification_lock' ) == 'db' ) {
-		if ( ! $wpdb->get_var( "SELECT GET_LOCK('" . $wpdb->prefix . 'post_notification_lock' . "', 0)" ) ) {
-			return;
-		}
-	} else {
-		$mutex = @fopen( POST_NOTIFICATION_PATH . '_temp/post_notification.lock', 'w' );
+	global $pn_write_send_log;
+	if ( $pn_write_send_log ) {
+		// DEBUG
+		// For testing, write progress to a file
+		$send_log_filename = post_notification_get_sendlog_filename();
+	}
 
+	//$use_db_lock = get_option( 'post_notification_lock' ) == 'db' ? true : false;
+	//$use_file_lock = ! $use_db_lock;
+	
+	// for now, use both locks at once! Just be sure that no two processes run at the same time.
+	$use_db_lock   = true;
+	$use_file_lock = true;
+
+	if ( $use_file_lock ) {
+		$mutex = @fopen( POST_NOTIFICATION_PATH . '_temp/post_notification.lock', 'w' );
 
 		if ( ! $mutex || ! flock( $mutex, LOCK_EX | LOCK_NB, $eWouldBlock ) || $eWouldBlock ) {
 			// There is already someone mailing.
 			@fclose( $mutex );
+			return;
+		}
+	}
+	if ( $use_db_lock ) {
+		if ( ! $wpdb->get_var( "SELECT GET_LOCK('" . $wpdb->prefix . 'post_notification_lock' . "', 0)" ) ) {
+			if ( $use_file_lock ) {
+				// technically, this cannot happen: file lock was acquired, but DB is locked.
+				if ( $pn_write_send_log ) {
+					file_put_contents( $send_log_filename, date( 'Y-m-d H:i:s' ) . " - ERROR: file is not locked, but DB is locked! bailing out.\n", FILE_APPEND );
+				}
 
+				flock( $mutex, LOCK_UN );
+				fclose( $mutex );
+			}
 			return;
 		}
 	}
@@ -470,9 +532,9 @@ function post_notification_send() {
 	$posts = $wpdb->get_results( "SELECT id, notification_sent " . post_notification_sql_posts_to_send() );
 
 
-	if ( ! $posts ) { //This shouldn't happen, but never mind.
+	if ( ! $posts ) {
+		//This shouldn't happen, but never mind.
 		post_notification_set_next_send();
-
 		return; //Nothing to do.
 	}
 
@@ -482,19 +544,28 @@ function post_notification_send() {
 		include_once( POST_NOTIFICATION_PATH . 'userfunctions.php' );
 	}
 
-
-	// Mail out mails
+	// Send mails
 	$maxsend   = get_option( 'post_notification_maxsend' );
 	$mailssent = - 1;
 	$endtime   = ini_get( 'max_execution_time' );
+	$currtime = time();
 	if ( $endtime != 0 ) {
-		$endtime += floor( $timestart ) - 5; //Make shure we will have a least 5 sek left.
+		//Make sure we will have a least 5 sec left.
+		$endtime += floor( $timestart ) - 5;
+	} else {
+		// No time limit, but don't overdo it.
+		$endtime = $currtime + 20;
+	}
+	// cap execution time to 20 seconds
+	if ( $endtime - $currtime > 20 ) {
+		$endtime = $currtime + 20;
 	}
 	$time_remain = 1;
+
 	foreach ( $posts as $post ) {
-		if ( get_option( 'post_notification_debug' ) == 'yes' ) {
-			echo '<hr />Sending post: ' . $post->id . '<br />';
-		}
+		//if ( get_option( 'post_notification_debug' ) == 'yes' ) {
+		//	echo '<hr />Sending post: ' . $post->id . '<br />';
+		//}
 
 		//Find the categories
 		if ( get_option( 'db_version' ) < 6124 ) {
@@ -525,52 +596,72 @@ function post_notification_send() {
 		}
 		$cat_ids[] = (string) $last_cat;
 		$cat_ids   = implode( ", ", $cat_ids ); //convert to string
-		if ( get_option( 'post_notification_debug' ) == 'yes' ) {
-			echo 'The cat-Ids are: ' . $cat_ids . '<br />';
-		}
+		//if ( get_option( 'post_notification_debug' ) == 'yes' ) {
+		//	echo 'The cat-Ids are: ' . $cat_ids . '<br />';
+		//}
 
-		// Get the Emailadds
-		$emails = $wpdb->get_results( " SELECT e.email_addr, e.id, e.act_code" . " FROM $t_emails e, $t_cats c " . " WHERE c.cat_id IN ($cat_ids) AND c.id = e.id AND e.gets_mail = 1 AND e.id >= " . $post->notification_sent . //Only send to people who havn't got mail before.
-		                              " GROUP BY e.id " . " ORDER BY e.id ASC" ); //We need this. Otherwise we can't be shure whether we already have sent mail.
+		// Get the email addresses.
+		// Only send to people who we haven't sent yet.
+		// Note: we need the grouping and ordering. Otherwise we can't be sure whether we have already sent mail.
+		// FIXME: this loads all emails and act_codes into memory at once. Could be a problem with very large lists.
+		// A better way would be to get the ID's only, and retrieve email+act_code one by one.
+		$emails = $wpdb->get_results( " SELECT e.email_addr, e.id, e.act_code" . " FROM $t_emails e, $t_cats c " . " WHERE c.cat_id IN ($cat_ids) AND c.id = e.id AND e.gets_mail = 1 AND e.id >= " . $post->notification_sent .
+		                              " GROUP BY e.id " . " ORDER BY e.id ASC" );
 
-		if ( get_option( 'post_notification_debug' ) == 'yes' ) {
-			echo count( $emails ) . ' Emails were found.<br />';
-		}
-		if ( $emails ) { //Check wheater ther are any mails to send anything.
+		//if ( get_option( 'post_notification_debug' ) == 'yes' ) {
+		//	echo count( $emails ) . ' Emails were found.<br />';
+		//}
+		if ( $emails ) { //Check whether there are any mails to send anything.
+			if ( $pn_write_send_log ) {
+				file_put_contents( $send_log_filename, "--------------------------------------------\n"
+					. date( 'Y-m-d H:i:s' ) . " - START CHUNK for post #" . $post->id . " from email id " . $post->notification_sent
+					. ":  remaining emails=" . count($emails)
+					. "  maxsend=$maxsend  max_duration=" . ($endtime - time()) . "\n", FILE_APPEND );
+			}
+
 			//Get Data
 			$maildata = post_notification_create_email( $post->id );
 			foreach ( $emails as $email ) {
-				if ( get_option( 'post_notification_debug' ) == 'yes' ) {
-					echo 'Sending mail to: ' . $email->email_addr . '<br />';
-				}
+				//if ( get_option( 'post_notification_debug' ) == 'yes' ) {
+				//	echo 'Sending mail to: ' . $email->email_addr . '<br />';
+				//}
+
+				//Always save the current email ID
+				$mailssent = $email->id;
 
 				if ( $endtime != 0 ) { //if this is 0 we have as much time as we want.
 					$time_remain = $endtime - time();
 				}
 				if ( $maxsend < 1 || $time_remain < 0 ) { //Are we allowed to send any more mails?
-					$mailssent = $email->id; //Save where we stoped
 					break;
 				}
-				//$$fb 2020-01-06: why not using $email->act_code for the $code parameter?
-				post_notification_sendmail( $maildata, $email->email_addr, '' );
+
+				// actually send the mail
+				post_notification_sendmail( $maildata, $email->email_addr, $email->act_code );
 
 				$maxsend --;
 			}
 		}
-		// Update notification_sent to -1 (We're done)
+		// Update notification_sent. When we're done, set to -1.
 		$wpdb->query( " UPDATE $t_posts " . " SET " . " notification_sent = " . $mailssent . " WHERE post_id = " . $post->id );
 
+		if ( $pn_write_send_log ) {
+			file_put_contents( $send_log_filename, date( 'Y-m-d H:i:s' ) . " - END CHUNK for post #" . $post->id 
+				. ". next email id=$mailssent maxsend=$maxsend\n", FILE_APPEND );
+		}
 
 		if ( $maxsend < 1 ) {
+			// We dont need to go on if there's nothing to send.
 			break;
-		} //We dont need to go on, if there's nothing to send.
+		}
 	}
 	update_option( 'post_notification_lastsend', time() );
 	post_notification_set_next_send();
 
-	if ( get_option( 'post_notification_lock' ) == 'db' ) {
+	if ( $use_db_lock ) {
 		$wpdb->query( "SELECT RELEASE_LOCK('" . $wpdb->prefix . 'post_notification_lock' . "')" );
-	} else {
+	}
+	if ( $use_file_lock ) {
 		flock( $mutex, LOCK_UN );
 		fclose( $mutex );
 	}
