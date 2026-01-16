@@ -448,13 +448,13 @@ function post_notification_sendmail( $maildata, $addr, $code = '', $send = true,
 			if ( strpos( $contents, "<$addr>" ) !== false ) {
 				// Address found, skip sending
 				$maildata['sent'] = false;
-				file_put_contents( $send_log_filename, date( 'Y-m-d H:i:s' ) . " - FOOLISHLY REFUSING DUPLICATE: <$addr>\n", FILE_APPEND );
+				file_put_contents( $send_log_filename, date( 'Y-m-d H:i:s' ) . " [" . getmypid() . "] - REJECTING DUPLICATE: <$addr>\n", FILE_APPEND );
 				return $maildata;
 			}
 		}
 
 		if ( !$is_test ) {
-			file_put_contents( $send_log_filename, date( 'Y-m-d H:i:s' ) . " - SEND: <$addr>\n", FILE_APPEND );
+			file_put_contents( $send_log_filename, date( 'Y-m-d H:i:s' ) . " [" . getmypid() . "] - SEND: <$addr>\n", FILE_APPEND );
 		}
 	}
 
@@ -508,7 +508,7 @@ function post_notification_send() {
 			if ( $use_file_lock ) {
 				// technically, this cannot happen: file lock was acquired, but DB is locked.
 				if ( $pn_write_send_log ) {
-					file_put_contents( $send_log_filename, date( 'Y-m-d H:i:s' ) . " - ERROR: file is not locked, but DB is locked! bailing out.\n", FILE_APPEND );
+					file_put_contents( $send_log_filename, date( 'Y-m-d H:i:s' ) . " [" . getmypid() . "] - ERROR: file is not locked, but DB is locked! bailing out.\n", FILE_APPEND );
 				}
 
 				flock( $mutex, LOCK_UN );
@@ -614,7 +614,7 @@ function post_notification_send() {
 		if ( $emails ) { //Check whether there are any mails to send anything.
 			if ( $pn_write_send_log ) {
 				file_put_contents( $send_log_filename, "--------------------------------------------\n"
-					. date( 'Y-m-d H:i:s' ) . " - START CHUNK for post #" . $post->id . " from email id " . $post->notification_sent
+					. date( 'Y-m-d H:i:s' ) . " [" . getmypid() . "] - START CHUNK for post #" . $post->id . " from email id " . $post->notification_sent
 					. ":  remaining emails=" . count($emails)
 					. "  maxsend=$maxsend  max_duration=" . ($endtime - time()) . "\n", FILE_APPEND );
 			}
@@ -646,7 +646,7 @@ function post_notification_send() {
 		$wpdb->query( " UPDATE $t_posts " . " SET " . " notification_sent = " . $mailssent . " WHERE post_id = " . $post->id );
 
 		if ( $pn_write_send_log ) {
-			file_put_contents( $send_log_filename, date( 'Y-m-d H:i:s' ) . " - END CHUNK for post #" . $post->id 
+			file_put_contents( $send_log_filename, date( 'Y-m-d H:i:s' ) . " [" . getmypid() . "] - END CHUNK for post #" . $post->id 
 				. ". next email id=$mailssent maxsend=$maxsend\n", FILE_APPEND );
 		}
 
